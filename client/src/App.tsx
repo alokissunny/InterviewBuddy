@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Briefcase, Mic, Search, User } from 'lucide-react';
+import { Briefcase, Mic, Search, User, Users } from 'lucide-react';
 import { CandidateProfile } from './types';
 import { SetupPage } from './pages/SetupPage';
 import { InterviewPage } from './pages/InterviewPage';
 import { JobsPage } from './pages/JobsPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { RecruitersPage } from './pages/RecruitersPage';
 
-export type MainTab = 'interview' | 'jobs' | 'profile';
+export type MainTab = 'interview' | 'jobs' | 'profile' | 'recruiters';
 
 const PROFILE_KEY = 'interview_copilot_profile';
 
@@ -25,18 +26,19 @@ function saveProfile(p: CandidateProfile) {
 
 function TabBar({ active, onChange }: { active: MainTab; onChange: (t: MainTab) => void }) {
   const tabs: { id: MainTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'interview', label: 'Interview', icon: <Mic size={14} /> },
-    { id: 'jobs',      label: 'Jobs',      icon: <Search size={14} /> },
-    { id: 'profile',   label: 'My Profile',icon: <User size={14} /> },
+    { id: 'interview',  label: 'Interview',  icon: <Mic size={14} /> },
+    { id: 'jobs',       label: 'Jobs',       icon: <Search size={14} /> },
+    { id: 'recruiters', label: 'Recruiters', icon: <Users size={14} /> },
+    { id: 'profile',    label: 'My Profile', icon: <User size={14} /> },
   ];
   return (
-    <div className="flex items-center bg-slate-900/60 rounded-xl p-1 gap-0.5 border border-slate-700/60">
+    <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5 border border-gray-200">
       {tabs.map(t => (
         <button key={t.id} onClick={() => onChange(t.id)}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             active === t.id
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+              ? 'bg-[#0A66C2] text-white shadow-md shadow-[#0A66C2]/30'
+              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
           }`}
         >
           {t.icon} {t.label}
@@ -93,17 +95,17 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-slate-900">
+    <div className="h-screen flex flex-col overflow-hidden bg-[#F3F2EF]">
       {/* Non-interview tabs get a standalone header */}
       {activeTab !== 'interview' && (
-        <header className="flex items-center justify-between px-6 py-4 bg-slate-800/90 border-b border-slate-700/60 shrink-0 shadow-sm">
+        <header className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 shrink-0 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+            <div className="w-9 h-9 rounded-xl bg-[#0A66C2] flex items-center justify-center shadow-lg shadow-[#0A66C2]/30">
               <Briefcase size={17} className="text-white" />
             </div>
             <div>
-              <span className="text-white font-bold text-base">Interview Copilot</span>
-              <span className="text-slate-500 text-sm ml-2">· {profile.name}</span>
+              <span className="text-gray-900 font-bold text-base">Interview Copilot</span>
+              <span className="text-gray-400 text-sm ml-2">· {profile.name}</span>
             </div>
           </div>
           <TabBar active={activeTab} onChange={setActiveTab} />
@@ -122,6 +124,9 @@ export default function App() {
         )}
         {activeTab === 'jobs' && (
           <JobsPage profile={profile} />
+        )}
+        {activeTab === 'recruiters' && (
+          <RecruitersPage />
         )}
         {activeTab === 'profile' && (
           <ProfilePage profile={profile} onChangeProfile={handleChangeProfile} onUpdate={handleUpdateProfile} />

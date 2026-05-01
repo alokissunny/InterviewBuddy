@@ -11,8 +11,8 @@ interface ProfilePageProps {
   onUpdate: (p: CandidateProfile) => void;
 }
 
-const inp = 'w-full bg-slate-700/60 border border-slate-600 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-base text-slate-200 outline-none placeholder:text-slate-500 transition-colors';
-const smInp = 'bg-slate-700/60 border border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none placeholder:text-slate-500 transition-colors';
+const inp = 'w-full bg-gray-50 border border-gray-300 focus:border-[#0A66C2] rounded-xl px-3.5 py-2.5 text-base text-gray-900 outline-none placeholder:text-gray-400 transition-colors';
+const smInp = 'bg-gray-50 border border-gray-300 focus:border-[#0A66C2] rounded-lg px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 transition-colors';
 
 function Section({
   icon, title, editing, onEdit, onSave, onCancel, children,
@@ -22,23 +22,23 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-slate-800/70 border border-slate-700/60 rounded-2xl p-6 shadow-lg shadow-black/10">
+    <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2.5">
-          <span className="text-blue-400">{icon}</span>
-          <h2 className="text-white font-semibold text-base">{title}</h2>
+          <span className="text-[#0A66C2]">{icon}</span>
+          <h2 className="text-gray-900 font-semibold text-base">{title}</h2>
         </div>
         {editing ? (
           <div className="flex gap-2">
-            <button onClick={onSave} className="flex items-center gap-1.5 text-sm text-green-400 hover:text-green-300 border border-green-500/30 hover:border-green-500/60 rounded-lg px-3 py-1.5 transition-all">
+            <button onClick={onSave} className="flex items-center gap-1.5 text-sm text-green-600 hover:text-green-700 border border-green-500/30 hover:border-green-500/60 rounded-lg px-3 py-1.5 transition-all">
               <Check size={13} /> Save
             </button>
-            <button onClick={onCancel} className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-200 border border-slate-600 hover:border-slate-500 rounded-lg px-3 py-1.5 transition-all">
+            <button onClick={onCancel} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 border border-gray-300 hover:border-gray-400 rounded-lg px-3 py-1.5 transition-all">
               <X size={13} /> Cancel
             </button>
           </div>
         ) : (
-          <button onClick={onEdit} className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-200 border border-slate-600 hover:border-slate-500 rounded-lg px-3 py-1.5 transition-all">
+          <button onClick={onEdit} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 border border-gray-300 hover:border-gray-400 rounded-lg px-3 py-1.5 transition-all">
             <Pencil size={13} /> Edit
           </button>
         )}
@@ -78,11 +78,11 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
   // ── Header / Summary ────────────────────────────────────────────────────────
   const isHeader = editingSection === 'header';
   const headerSection = (
-    <div className="bg-slate-800/70 border border-slate-700/60 rounded-2xl p-6 shadow-lg shadow-black/10">
+    <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-5 flex-1 min-w-0">
-          <div className="w-16 h-16 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shrink-0">
-            <User size={28} className="text-blue-400" />
+          <div className="w-16 h-16 rounded-2xl bg-[#EEF3F8] border border-[#0A66C2]/30 flex items-center justify-center shrink-0">
+            <User size={28} className="text-[#0A66C2]" />
           </div>
           {isHeader ? (
             <div className="flex-1 space-y-2.5">
@@ -95,17 +95,17 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
             </div>
           ) : (
             <div className="min-w-0">
-              <h1 className="text-white font-bold text-2xl leading-tight">{profile.name}</h1>
-              <p className="text-blue-400 font-semibold text-base mt-1">{profile.title}</p>
+              <h1 className="text-gray-900 font-bold text-2xl leading-tight">{profile.name}</h1>
+              <p className="text-[#0A66C2] font-semibold text-base mt-1">{profile.title}</p>
               <div className="flex flex-wrap gap-x-5 gap-y-1.5 mt-2.5">
                 {profile.email && (
-                  <span className="flex items-center gap-2 text-sm text-slate-400">
-                    <Mail size={14} className="text-slate-500" />{profile.email}
+                  <span className="flex items-center gap-2 text-sm text-gray-500">
+                    <Mail size={14} className="text-gray-400" />{profile.email}
                   </span>
                 )}
                 {profile.phone && (
-                  <span className="flex items-center gap-2 text-sm text-slate-400">
-                    <Phone size={14} className="text-slate-500" />{profile.phone}
+                  <span className="flex items-center gap-2 text-sm text-gray-500">
+                    <Phone size={14} className="text-gray-400" />{profile.phone}
                   </span>
                 )}
               </div>
@@ -117,29 +117,29 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
           {isHeader ? (
             <div className="flex gap-2">
               <button onClick={() => save({ name: headerDraft.name, title: headerDraft.title, email: headerDraft.email, phone: headerDraft.phone, summary: headerDraft.summary })}
-                className="flex items-center gap-1.5 text-sm text-green-400 hover:text-green-300 border border-green-500/30 rounded-lg px-3 py-1.5 transition-all">
+                className="flex items-center gap-1.5 text-sm text-green-600 hover:text-green-700 border border-green-500/30 rounded-lg px-3 py-1.5 transition-all">
                 <Check size={13} /> Save
               </button>
               <button onClick={cancelEdit}
-                className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-200 border border-slate-600 rounded-lg px-3 py-1.5 transition-all">
+                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 border border-gray-300 rounded-lg px-3 py-1.5 transition-all">
                 <X size={13} /> Cancel
               </button>
             </div>
           ) : (
             <button onClick={() => startEdit('header')}
-              className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-200 border border-slate-600 hover:border-slate-500 rounded-lg px-3 py-1.5 transition-all">
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 border border-gray-300 hover:border-gray-400 rounded-lg px-3 py-1.5 transition-all">
               <Pencil size={13} /> Edit
             </button>
           )}
           <button onClick={onChangeProfile}
-            className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-200 border border-slate-600 hover:border-slate-500 rounded-lg px-3 py-2 transition-all">
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 border border-gray-300 hover:border-gray-400 rounded-lg px-3 py-2 transition-all">
             <RefreshCw size={13} /> Update CV
           </button>
         </div>
       </div>
 
       {/* Summary */}
-      <div className="mt-5 border-t border-slate-700/50 pt-5">
+      <div className="mt-5 border-t border-gray-200 pt-5">
         {isHeader ? (
           <textarea
             className={`${inp} min-h-[96px] resize-y`}
@@ -148,7 +148,7 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
             onChange={e => setHeaderDraft(d => ({ ...d, summary: e.target.value }))}
           />
         ) : (
-          profile.summary && <p className="text-base text-slate-300 leading-relaxed">{profile.summary}</p>
+          profile.summary && <p className="text-base text-gray-700 leading-relaxed">{profile.summary}</p>
         )}
       </div>
     </div>
@@ -165,9 +165,9 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
         <div>
           <div className="flex flex-wrap gap-2 mb-4">
             {skillsDraft.map((s, i) => (
-              <span key={i} className="flex items-center gap-1.5 text-sm bg-slate-700 text-slate-300 border border-slate-600 px-3 py-1.5 rounded-full">
+              <span key={i} className="flex items-center gap-1.5 text-sm bg-gray-100 text-gray-700 border border-gray-300 px-3 py-1.5 rounded-full">
                 {s}
-                <button onClick={() => setSkillsDraft(d => d.filter((_, j) => j !== i))} className="text-slate-500 hover:text-red-400 ml-0.5"><X size={12} /></button>
+                <button onClick={() => setSkillsDraft(d => d.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-500 ml-0.5"><X size={12} /></button>
               </span>
             ))}
           </div>
@@ -177,7 +177,7 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
               onKeyDown={e => { if (e.key === 'Enter' && newSkill.trim()) { setSkillsDraft(d => [...d, newSkill.trim()]); setNewSkill(''); } }}
             />
             <button onClick={() => { if (newSkill.trim()) { setSkillsDraft(d => [...d, newSkill.trim()]); setNewSkill(''); } }}
-              className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 border border-blue-500/30 hover:border-blue-500/60 rounded-lg px-4 py-2 transition-all">
+              className="flex items-center gap-1.5 text-sm text-[#0A66C2] hover:text-[#004182] border border-[#0A66C2]/30 hover:border-[#0A66C2]/60 rounded-lg px-4 py-2 transition-all">
               <Plus size={13} /> Add
             </button>
           </div>
@@ -185,7 +185,7 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
       ) : (
         <div className="flex flex-wrap gap-2">
           {profile.skills.map((s, i) => (
-            <span key={i} className="text-sm bg-slate-700/80 text-slate-300 border border-slate-600/50 px-3 py-1.5 rounded-full font-medium">{s}</span>
+            <span key={i} className="text-sm bg-gray-100 text-gray-700 border border-gray-200 px-3 py-1.5 rounded-full font-medium">{s}</span>
           ))}
         </div>
       )}
@@ -202,46 +202,46 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
       {editingSection === 'experience' ? (
         <div className="space-y-5">
           {expDraft.map((exp, i) => (
-            <div key={i} className="border border-slate-700/50 rounded-xl p-4 space-y-2.5 bg-slate-700/20">
+            <div key={i} className="border border-gray-200 rounded-xl p-4 space-y-2.5 bg-gray-50">
               <div className="flex gap-2.5">
                 <input className={smInp + ' flex-1'} placeholder="Role" value={exp.role} onChange={e => setExpDraft(d => d.map((x, j) => j === i ? { ...x, role: e.target.value } : x))} />
                 <input className={smInp + ' flex-1'} placeholder="Company" value={exp.company} onChange={e => setExpDraft(d => d.map((x, j) => j === i ? { ...x, company: e.target.value } : x))} />
                 <input className={smInp + ' w-32'} placeholder="Duration" value={exp.duration} onChange={e => setExpDraft(d => d.map((x, j) => j === i ? { ...x, duration: e.target.value } : x))} />
-                <button onClick={() => setExpDraft(d => d.filter((_, j) => j !== i))} className="text-slate-500 hover:text-red-400 p-1"><Trash2 size={15} /></button>
+                <button onClick={() => setExpDraft(d => d.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-500 p-1"><Trash2 size={15} /></button>
               </div>
               {exp.highlights.map((h, k) => (
                 <div key={k} className="flex gap-2">
                   <input className={smInp + ' flex-1'} value={h} onChange={e => setExpDraft(d => d.map((x, j) => j === i ? { ...x, highlights: x.highlights.map((hh, l) => l === k ? e.target.value : hh) } : x))} />
-                  <button onClick={() => setExpDraft(d => d.map((x, j) => j === i ? { ...x, highlights: x.highlights.filter((_, l) => l !== k) } : x))} className="text-slate-500 hover:text-red-400 p-1"><X size={13} /></button>
+                  <button onClick={() => setExpDraft(d => d.map((x, j) => j === i ? { ...x, highlights: x.highlights.filter((_, l) => l !== k) } : x))} className="text-gray-400 hover:text-red-500 p-1"><X size={13} /></button>
                 </div>
               ))}
               <button onClick={() => setExpDraft(d => d.map((x, j) => j === i ? { ...x, highlights: [...x.highlights, ''] } : x))}
-                className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-300 transition-colors">
+                className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 transition-colors">
                 <Plus size={12} /> Add highlight
               </button>
             </div>
           ))}
           <button onClick={() => setExpDraft(d => [...d, { role: '', company: '', duration: '', highlights: [''] }])}
-            className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 border border-blue-500/30 rounded-lg px-4 py-2 transition-all">
+            className="flex items-center gap-1.5 text-sm text-[#0A66C2] hover:text-[#004182] border border-[#0A66C2]/30 rounded-lg px-4 py-2 transition-all">
             <Plus size={13} /> Add role
           </button>
         </div>
       ) : (
         <div className="space-y-5">
           {profile.experience.map((exp, i) => (
-            <div key={i} className={i < profile.experience.length - 1 ? 'pb-5 border-b border-slate-700/40' : ''}>
+            <div key={i} className={i < profile.experience.length - 1 ? 'pb-5 border-b border-gray-200' : ''}>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-white font-semibold text-base">{exp.role}</p>
-                  <p className="text-slate-400 text-sm mt-0.5">{exp.company}</p>
+                  <p className="text-gray-900 font-semibold text-base">{exp.role}</p>
+                  <p className="text-gray-500 text-sm mt-0.5">{exp.company}</p>
                 </div>
-                <span className="text-sm text-slate-500 shrink-0 mt-0.5">{exp.duration}</span>
+                <span className="text-sm text-gray-400 shrink-0 mt-0.5">{exp.duration}</span>
               </div>
               {exp.highlights?.length > 0 && (
                 <ul className="mt-3 space-y-1.5 pl-4">
                   {exp.highlights.map((h, j) => (
-                    <li key={j} className="text-sm text-slate-400 leading-relaxed flex gap-2.5">
-                      <span className="text-slate-600 mt-1.5 shrink-0">•</span><span>{h}</span>
+                    <li key={j} className="text-sm text-gray-500 leading-relaxed flex gap-2.5">
+                      <span className="text-gray-300 mt-1.5 shrink-0">•</span><span>{h}</span>
                     </li>
                   ))}
                 </ul>
@@ -263,10 +263,10 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
       {editingSection === 'projects' ? (
         <div className="space-y-4">
           {projDraft.map((p, i) => (
-            <div key={i} className="border border-slate-700/50 rounded-xl p-4 space-y-2.5 bg-slate-700/20">
+            <div key={i} className="border border-gray-200 rounded-xl p-4 space-y-2.5 bg-gray-50">
               <div className="flex gap-2.5">
                 <input className={smInp + ' flex-1'} placeholder="Project name" value={p.name} onChange={e => setProjDraft(d => d.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} />
-                <button onClick={() => setProjDraft(d => d.filter((_, j) => j !== i))} className="text-slate-500 hover:text-red-400 p-1"><Trash2 size={15} /></button>
+                <button onClick={() => setProjDraft(d => d.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-500 p-1"><Trash2 size={15} /></button>
               </div>
               <textarea className={smInp + ' w-full resize-none'} rows={2} placeholder="Description" value={p.description}
                 onChange={e => setProjDraft(d => d.map((x, j) => j === i ? { ...x, description: e.target.value } : x))} />
@@ -274,7 +274,7 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
                 {p.technologies.map((t, k) => (
                   <span key={k} className="flex items-center gap-1.5 text-sm bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2.5 py-1 rounded-lg">
                     {t}
-                    <button onClick={() => setProjDraft(d => d.map((x, j) => j === i ? { ...x, technologies: x.technologies.filter((_, l) => l !== k) } : x))} className="text-indigo-400/50 hover:text-red-400"><X size={11} /></button>
+                    <button onClick={() => setProjDraft(d => d.map((x, j) => j === i ? { ...x, technologies: x.technologies.filter((_, l) => l !== k) } : x))} className="text-indigo-400/50 hover:text-red-500"><X size={11} /></button>
                   </span>
                 ))}
                 <input className={smInp + ' w-28'} placeholder="+ tech"
@@ -283,16 +283,16 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
             </div>
           ))}
           <button onClick={() => setProjDraft(d => [...d, { name: '', description: '', technologies: [] }])}
-            className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 border border-blue-500/30 rounded-lg px-4 py-2 transition-all">
+            className="flex items-center gap-1.5 text-sm text-[#0A66C2] hover:text-[#004182] border border-[#0A66C2]/30 rounded-lg px-4 py-2 transition-all">
             <Plus size={13} /> Add project
           </button>
         </div>
       ) : (
         <div className="space-y-4">
           {profile.projects.map((p, i) => (
-            <div key={i} className={i < profile.projects.length - 1 ? 'pb-4 border-b border-slate-700/40' : ''}>
-              <p className="text-white font-semibold text-base">{p.name}</p>
-              {p.description && <p className="text-sm text-slate-400 mt-1.5 leading-relaxed">{p.description}</p>}
+            <div key={i} className={i < profile.projects.length - 1 ? 'pb-4 border-b border-gray-200' : ''}>
+              <p className="text-gray-900 font-semibold text-base">{p.name}</p>
+              {p.description && <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">{p.description}</p>}
               {p.technologies?.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2.5">
                   {p.technologies.map((t, j) => (
@@ -321,11 +321,11 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
               <input className={smInp + ' flex-1'} placeholder="Degree" value={e.degree} onChange={ev => setEduDraft(d => d.map((x, j) => j === i ? { ...x, degree: ev.target.value } : x))} />
               <input className={smInp + ' flex-1'} placeholder="Institution" value={e.institution} onChange={ev => setEduDraft(d => d.map((x, j) => j === i ? { ...x, institution: ev.target.value } : x))} />
               <input className={smInp + ' w-24'} placeholder="Year" value={e.year} onChange={ev => setEduDraft(d => d.map((x, j) => j === i ? { ...x, year: ev.target.value } : x))} />
-              <button onClick={() => setEduDraft(d => d.filter((_, j) => j !== i))} className="text-slate-500 hover:text-red-400 p-1"><Trash2 size={15} /></button>
+              <button onClick={() => setEduDraft(d => d.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-500 p-1"><Trash2 size={15} /></button>
             </div>
           ))}
           <button onClick={() => setEduDraft(d => [...d, { degree: '', institution: '', year: '' }])}
-            className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 border border-blue-500/30 rounded-lg px-4 py-2 transition-all">
+            className="flex items-center gap-1.5 text-sm text-[#0A66C2] hover:text-[#004182] border border-[#0A66C2]/30 rounded-lg px-4 py-2 transition-all">
             <Plus size={13} /> Add education
           </button>
         </div>
@@ -334,10 +334,10 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
           {profile.education.map((e, i) => (
             <div key={i} className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-white font-semibold text-base">{e.degree}</p>
-                <p className="text-slate-400 text-sm mt-0.5">{e.institution}</p>
+                <p className="text-gray-900 font-semibold text-base">{e.degree}</p>
+                <p className="text-gray-500 text-sm mt-0.5">{e.institution}</p>
               </div>
-              <span className="text-sm text-slate-500 shrink-0">{e.year}</span>
+              <span className="text-sm text-gray-400 shrink-0">{e.year}</span>
             </div>
           ))}
         </div>
@@ -357,18 +357,18 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
           {achDraft.map((a, i) => (
             <div key={i} className="flex gap-2.5">
               <input className={smInp + ' flex-1'} value={a} onChange={e => setAchDraft(d => d.map((x, j) => j === i ? e.target.value : x))} />
-              <button onClick={() => setAchDraft(d => d.filter((_, j) => j !== i))} className="text-slate-500 hover:text-red-400 p-1"><Trash2 size={15} /></button>
+              <button onClick={() => setAchDraft(d => d.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-500 p-1"><Trash2 size={15} /></button>
             </div>
           ))}
           <button onClick={() => setAchDraft(d => [...d, ''])}
-            className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 border border-blue-500/30 rounded-lg px-4 py-2 transition-all">
+            className="flex items-center gap-1.5 text-sm text-[#0A66C2] hover:text-[#004182] border border-[#0A66C2]/30 rounded-lg px-4 py-2 transition-all">
             <Plus size={13} /> Add achievement
           </button>
         </div>
       ) : (
         <ul className="space-y-3">
           {profile.achievements.map((a, i) => (
-            <li key={i} className="flex gap-3 text-sm text-slate-400 leading-relaxed">
+            <li key={i} className="flex gap-3 text-sm text-gray-500 leading-relaxed">
               <span className="text-yellow-500 mt-0.5 shrink-0 text-base">★</span><span>{a}</span>
             </li>
           ))}
@@ -378,7 +378,7 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
   );
 
   return (
-    <div className="h-full overflow-y-auto bg-slate-900">
+    <div className="h-full overflow-y-auto bg-[#F3F2EF]">
       <div className="max-w-2xl mx-auto px-5 py-7 space-y-5">
         {headerSection}
         {profile.skills?.length > 0 || editingSection === 'skills' ? skillsSection : null}

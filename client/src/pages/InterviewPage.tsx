@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
   Mic, MicOff, RotateCcw, User, Briefcase, ChevronDown, ChevronUp,
-  Zap, Monitor, MonitorOff, AlertCircle, Info, Settings, Search
+  Zap, Monitor, MonitorOff, AlertCircle, Info, Settings, Search, Users
 } from 'lucide-react';
 import { MainTab } from '../App';
 import { CandidateProfile, TranscriptEntry } from '../types';
@@ -141,26 +141,26 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
   };
 
   return (
-    <div className="h-screen bg-slate-900 flex flex-col overflow-hidden">
+    <div className="h-screen bg-[#F3F2EF] flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 bg-slate-800/90 border-b border-slate-700/60 shrink-0 shadow-sm">
+      <header className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 shrink-0 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+            <div className="w-9 h-9 rounded-xl bg-[#0A66C2] flex items-center justify-center shadow-lg shadow-[#0A66C2]/30">
               <Briefcase size={17} className="text-white" />
             </div>
             <div>
-              <span className="text-white font-bold text-base">Interview Copilot</span>
-              <span className="text-slate-500 text-sm ml-2">· {profile.name}</span>
+              <span className="text-gray-900 font-bold text-base">Interview Copilot</span>
+              <span className="text-gray-400 text-sm ml-2">· {profile.name}</span>
             </div>
           </div>
 
           {/* Tab switcher */}
-          <div className="flex items-center bg-slate-900/60 rounded-xl p-1 gap-0.5 border border-slate-700/60 ml-1">
-            {([['interview', <Mic size={14} />, 'Interview'], ['jobs', <Search size={14} />, 'Jobs'], ['profile', <User size={14} />, 'My Profile']] as const).map(([tab, icon, label]) => (
+          <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5 border border-gray-200 ml-1">
+            {([['interview', <Mic size={14} />, 'Interview'], ['jobs', <Search size={14} />, 'Jobs'], ['recruiters', <Users size={14} />, 'Recruiters'], ['profile', <User size={14} />, 'My Profile']] as const).map(([tab, icon, label]) => (
               <button key={tab} onClick={() => onTabChange(tab as MainTab)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  activeTab === tab ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                  activeTab === tab ? 'bg-[#0A66C2] text-white shadow-md shadow-[#0A66C2]/30' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
                 }`}
               >
                 {icon} {label}
@@ -171,14 +171,14 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
 
         <div className="flex items-center gap-4">
           <AudioIndicator isListening={isActive} isAnalyzing={isAnalyzing || sysTranscribing} mode={audioMode} />
-          <div className="h-5 w-px bg-slate-700" />
-          <span className="font-mono text-slate-300 text-xs">{elapsed}</span>
-          <div className="h-5 w-px bg-slate-700" />
+          <div className="h-5 w-px bg-gray-200" />
+          <span className="font-mono text-gray-700 text-xs">{elapsed}</span>
+          <div className="h-5 w-px bg-gray-200" />
 
-          <label className="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer select-none">
+          <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none">
             <div
               onClick={() => setAutoAnalyze(v => !v)}
-              className={`w-8 h-4 rounded-full transition-colors relative ${autoAnalyze ? 'bg-blue-600' : 'bg-slate-600'}`}
+              className={`w-8 h-4 rounded-full transition-colors relative ${autoAnalyze ? 'bg-[#0A66C2]' : 'bg-gray-200'}`}
             >
               <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${autoAnalyze ? 'translate-x-4' : 'translate-x-0.5'}`} />
             </div>
@@ -187,7 +187,7 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
 
           <button
             onClick={() => setShowProfile(v => !v)}
-            className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 transition-colors"
           >
             <User size={14} />
             Profile
@@ -196,7 +196,7 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
 
           <button
             onClick={onChangeProfile}
-            className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200 transition-colors"
+            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 transition-colors"
           >
             <User size={13} />
             Change Profile
@@ -204,7 +204,7 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
 
           <button
             onClick={onReset}
-            className="flex items-center gap-1 text-xs text-slate-400 hover:text-red-400 transition-colors"
+            className="flex items-center gap-1 text-xs text-gray-500 hover:text-red-500 transition-colors"
           >
             <RotateCcw size={13} />
             Reset
@@ -214,25 +214,25 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
 
       {/* Profile dropdown */}
       {showProfile && (
-        <div className="px-4 py-3 bg-slate-800/60 border-b border-slate-700/50 animate-slide-up">
+        <div className="px-4 py-3 bg-white border-b border-gray-200 animate-slide-up">
           <div className="flex flex-wrap gap-4 text-xs">
             <div>
-              <span className="text-slate-500 uppercase tracking-wide">Role</span>
-              <p className="text-slate-200 mt-0.5">{profile.title}</p>
+              <span className="text-gray-400 uppercase tracking-wide">Role</span>
+              <p className="text-gray-800 mt-0.5">{profile.title}</p>
             </div>
             <div>
-              <span className="text-slate-500 uppercase tracking-wide">Skills</span>
+              <span className="text-gray-400 uppercase tracking-wide">Skills</span>
               <div className="flex flex-wrap gap-1 mt-0.5">
                 {profile.skills?.slice(0, 8).map(s => (
-                  <span key={s} className="bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded">{s}</span>
+                  <span key={s} className="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">{s}</span>
                 ))}
-                {(profile.skills?.length ?? 0) > 8 && <span className="text-slate-500">+{profile.skills.length - 8}</span>}
+                {(profile.skills?.length ?? 0) > 8 && <span className="text-gray-400">+{profile.skills.length - 8}</span>}
               </div>
             </div>
             {profile.experience?.[0] && (
               <div>
-                <span className="text-slate-500 uppercase tracking-wide">Latest Role</span>
-                <p className="text-slate-200 mt-0.5">{profile.experience[0].role} at {profile.experience[0].company}</p>
+                <span className="text-gray-400 uppercase tracking-wide">Latest Role</span>
+                <p className="text-gray-800 mt-0.5">{profile.experience[0].role} at {profile.experience[0].company}</p>
               </div>
             )}
           </div>
@@ -242,9 +242,9 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
       {/* Notice banner */}
       {captureNotice && !showKeyModal && (
         <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 animate-slide-up shrink-0">
-          <AlertCircle size={14} className="text-amber-400 shrink-0" />
-          <p className="text-amber-300 text-xs flex-1">{captureNotice}</p>
-          <button onClick={() => setCaptureNotice(null)} className="text-amber-500 hover:text-amber-300 text-xs ml-2">✕</button>
+          <AlertCircle size={14} className="text-amber-600 shrink-0" />
+          <p className="text-amber-600 text-xs flex-1">{captureNotice}</p>
+          <button onClick={() => setCaptureNotice(null)} className="text-amber-600 hover:text-amber-700 text-xs ml-2">✕</button>
         </div>
       )}
 
@@ -271,31 +271,31 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
       </div>
 
       {/* Bottom bar */}
-      <div className="flex items-center justify-between px-5 py-3.5 bg-slate-800/90 border-t border-slate-700/60 shrink-0">
+      <div className="flex items-center justify-between px-5 py-3.5 bg-white border-t border-gray-200 shrink-0">
         {/* Status */}
         <div className="flex flex-col gap-1 min-w-0">
           {audioMode === 'mic' && !micSupported && (
-            <p className="text-sm text-amber-400">Mic not supported — use Chrome or Edge</p>
+            <p className="text-sm text-amber-600">Mic not supported — use Chrome or Edge</p>
           )}
           {needsKey && (
-            <p className="text-sm text-amber-400 flex items-center gap-1.5">
+            <p className="text-sm text-amber-600 flex items-center gap-1.5">
               <AlertCircle size={13} />
               API key required for computer audio —
-              <button onClick={() => setShowKeyModal(true)} className="underline hover:text-amber-300">add key</button>
+              <button onClick={() => setShowKeyModal(true)} className="underline hover:text-amber-700">add key</button>
             </p>
           )}
           {(audioMode === 'system' || audioMode === 'both') && (serverHasKey || whisperKey) && (
-            <p className="text-sm text-slate-500 flex items-center gap-1.5">
-              <Info size={13} className="text-blue-400" />
+            <p className="text-sm text-gray-400 flex items-center gap-1.5">
+              <Info size={13} className="text-[#0A66C2]" />
               {whisperKey
                 ? (whisperKey.startsWith('gsk_') ? 'Using Groq Whisper (free)' : 'Using your OpenAI key')
                 : 'Using server OpenAI key'}
               {' · '}
-              <button onClick={() => setShowKeyModal(true)} className="underline hover:text-slate-300">change</button>
+              <button onClick={() => setShowKeyModal(true)} className="underline hover:text-gray-600">change</button>
             </p>
           )}
           {statusMessage() && (
-            <p className={`text-sm ${isActive ? 'text-green-400' : 'text-slate-500'}`}>
+            <p className={`text-sm ${isActive ? 'text-green-600' : 'text-gray-400'}`}>
               {statusMessage()}
             </p>
           )}
@@ -303,7 +303,7 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
 
         <div className="flex items-center gap-3 shrink-0">
           {/* Audio source toggle */}
-          <div className="flex items-center bg-slate-700/60 rounded-xl p-1 gap-0.5 border border-slate-700">
+          <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5 border border-gray-200">
             {(['mic', 'system', 'both'] as AudioMode[]).map(mode => (
               <button
                 key={mode}
@@ -312,8 +312,8 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
                 title={getModeLabel(mode)}
                 className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all disabled:cursor-not-allowed ${
                   audioMode === mode
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
-                    : 'text-slate-400 hover:text-slate-200 disabled:opacity-40'
+                    ? 'bg-[#0A66C2] text-white shadow-md shadow-[#0A66C2]/30'
+                    : 'text-gray-600 hover:text-gray-900 disabled:opacity-40'
                 }`}
               >
                 {mode === 'mic' && <Mic size={13} />}
@@ -328,7 +328,7 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
           {(audioMode === 'system' || audioMode === 'both') && (
             <button
               onClick={() => setShowKeyModal(true)}
-              className="p-2.5 text-slate-400 hover:text-slate-200 bg-slate-700/60 hover:bg-slate-700 rounded-xl border border-slate-700 transition-all"
+              className="p-2.5 text-gray-500 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-xl border border-gray-200 transition-all"
               title="Change transcription API key"
             >
               <Settings size={16} />
@@ -340,7 +340,7 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
             <button
               onClick={() => analyze(entries.slice(-5).map(e => e.text).join(' '))}
               disabled={isAnalyzing}
-              className="flex items-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-slate-200 text-sm font-medium rounded-xl border border-slate-600 transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-800 text-sm font-medium rounded-xl border border-gray-300 transition-all"
             >
               <Zap size={15} /> Analyze
             </button>
@@ -353,7 +353,7 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
             className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               isActive
                 ? 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-500/25'
-                : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/25'
+                : 'bg-[#0A66C2] hover:bg-[#004182] text-white shadow-lg shadow-[#0A66C2]/25'
             }`}
           >
             {isActive

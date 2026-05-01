@@ -50,20 +50,20 @@ export function JobCard({ job, profile }: JobCardProps) {
   };
 
   return (
-    <div className="bg-slate-800/70 border border-slate-700/60 rounded-2xl shadow-lg shadow-black/10 hover:border-slate-600 hover:shadow-xl hover:shadow-black/20 transition-all duration-200">
+    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm hover:border-gray-300 hover:shadow-md transition-all duration-200">
       <div className="p-5">
         {/* Top row */}
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl bg-slate-700 border border-slate-600/50 flex items-center justify-center shrink-0 overflow-hidden">
+          <div className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden">
             {job.companyLogo
               ? <img src={job.companyLogo} alt={job.company} className="w-full h-full object-contain p-1" />
-              : <Building2 size={20} className="text-slate-400" />
+              : <Building2 size={20} className="text-gray-400" />
             }
           </div>
 
           <div className="flex-1 min-w-0">
-            <h3 className="text-white font-semibold text-base leading-snug">{job.title}</h3>
-            <p className="text-slate-400 text-sm mt-0.5">{job.company}</p>
+            <h3 className="text-gray-900 font-semibold text-base leading-snug">{job.title}</h3>
+            <p className="text-gray-500 text-sm mt-0.5">{job.company}</p>
           </div>
 
           {job.applyUrl && (
@@ -71,7 +71,7 @@ export function JobCard({ job, profile }: JobCardProps) {
               href={job.applyUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl shadow-md shadow-blue-500/20 transition-all shrink-0"
+              className="flex items-center gap-1.5 px-4 py-2 bg-[#0A66C2] hover:bg-[#004182] text-white text-sm font-semibold rounded-xl shadow-md shadow-[#0A66C2]/20 transition-all shrink-0"
             >
               Apply <ExternalLink size={13} />
             </a>
@@ -81,34 +81,34 @@ export function JobCard({ job, profile }: JobCardProps) {
         {/* Meta row */}
         <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-4">
           {job.location && (
-            <span className="flex items-center gap-1.5 text-sm text-slate-400">
-              <MapPin size={13} className="text-slate-500" /> {job.location}
+            <span className="flex items-center gap-1.5 text-sm text-gray-500">
+              <MapPin size={13} className="text-gray-400" /> {job.location}
             </span>
           )}
           {job.jobType && (
-            <span className="flex items-center gap-1.5 text-sm text-slate-400">
-              <Briefcase size={13} className="text-slate-500" /> {job.jobType}
+            <span className="flex items-center gap-1.5 text-sm text-gray-500">
+              <Briefcase size={13} className="text-gray-400" /> {job.jobType}
             </span>
           )}
           {job.postedAt && (
-            <span className="flex items-center gap-1.5 text-sm text-slate-500">
+            <span className="flex items-center gap-1.5 text-sm text-gray-400">
               <Clock size={13} /> {job.postedAt}
             </span>
           )}
           {job.salary && (
-            <span className="text-sm text-green-400 font-semibold">{job.salary}</span>
+            <span className="text-sm text-green-600 font-semibold">{job.salary}</span>
           )}
         </div>
 
         {/* Tags */}
         <div className="flex flex-wrap gap-2 mt-3">
           {job.experienceLevel && (
-            <span className="text-xs font-medium bg-slate-700 text-slate-300 border border-slate-600/50 px-3 py-1 rounded-full">
+            <span className="text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200 px-3 py-1 rounded-full">
               {job.experienceLevel}
             </span>
           )}
           {job.applicantsCount && (
-            <span className="text-xs text-slate-500 px-2 py-1">
+            <span className="text-xs text-gray-400 px-2 py-1">
               {job.applicantsCount} applicants
             </span>
           )}
@@ -119,13 +119,13 @@ export function JobCard({ job, profile }: JobCardProps) {
           <div className="mt-3">
             <button
               onClick={() => setExpanded(v => !v)}
-              className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-300 transition-colors"
+              className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 transition-colors"
             >
               {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               {expanded ? 'Hide details' : 'Show details'}
             </button>
             {expanded && (
-              <p className="mt-3 text-sm text-slate-400 leading-relaxed whitespace-pre-line">
+              <p className="mt-3 text-sm text-gray-500 leading-relaxed whitespace-pre-line">
                 {job.description.slice(0, 600)}{job.description.length > 600 ? '…' : ''}
               </p>
             )}
@@ -133,18 +133,18 @@ export function JobCard({ job, profile }: JobCardProps) {
         )}
 
         {/* Tailor Resume */}
-        <div className="mt-4 pt-4 border-t border-slate-700/50">
+        <div className="mt-4 pt-4 border-t border-gray-200">
           <button
             onClick={handleTailor}
             disabled={tailoring}
-            className="flex items-center gap-2 text-sm text-violet-400 hover:text-violet-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+            className="flex items-center gap-2 text-sm text-violet-600 hover:text-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
           >
             {tailoring
               ? <><Loader2 size={14} className="animate-spin" /> Tailoring resume…</>
               : <><FileText size={14} /> Tailor resume for this role</>
             }
           </button>
-          {tailorError && <p className="text-sm text-red-400 mt-2">{tailorError}</p>}
+          {tailorError && <p className="text-sm text-red-500 mt-2">{tailorError}</p>}
         </div>
       </div>
     </div>

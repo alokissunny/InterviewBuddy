@@ -415,6 +415,152 @@ app.post('/api/cv/tailor', async (req, res) => {
   }
 });
 
+// ─── LinkedIn Recruiters Search ───────────────────────────────────────────────
+const RECRUITER_PAGE_SIZE = 10;
+
+function extractProfilePhoto(picture) {
+  if (!picture) return '';
+  const rootUrl = picture.rootUrl || '';
+  const artifacts = picture.artifacts || [];
+  if (!artifacts.length) return '';
+  const artifact = artifacts[Math.min(1, artifacts.length - 1)];
+  return rootUrl + (artifact.fileIdentifyingUrlPathSegment || '');
+}
+
+async function searchLinkedInRecruiters({ keywords, location, start, liAt }) {
+  // Step 1: Hit LinkedIn to get a JSESSIONID / csrf token bound to our session
+  let jsessionid = null;
+  try {
+    const homeResp = await fetch('https://www.linkedin.com/', {
+      headers: {
+        Cookie: `li_at=${liAt}`,
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+      redirect: 'follow',
+    });
+    const rawCookies = homeResp.headers.get('set-cookie') || '';
+    const jsMatch = rawCookies.match(/JSESSIONID="?([^";,\s]+)"?/);
+    if (jsMatch) jsessionid = jsMatch[1];
+    console.log('[Recruiters] JSESSIONID:', jsessionid ? jsessionid.slice(0, 20) + '…' : 'not found');
+  } catch (e) {
+    console.warn('[Recruiters] Could not fetch JSESSIONID:', e.message);
+  }
+
+  const cookieHeader = jsessionid
+    ? `li_at=${liAt}; JSESSIONID="${jsessionid}"`
+    : `li_at=${liAt}`;
+  const csrfToken = jsessionid || 'ajax:0';
+
+  // Step 2: Call Voyager dash/clusters (newer endpoint) with 1st/2nd connection filter.
+  // Build URL manually — URLSearchParams would encode LinkedIn's RestLi filter syntax
+  // (parentheses, colons, commas) and produce a 404.
+  const kw = (keywords || 'recruiter').replace(/[(),:]/g, ' ').trim();
+  const query = `(keywords:${kw},flagshipSearchIntent:SEARCH_SRP,queryParameters:(network:List(F,S),resultType:List(PEOPLE)),includeFiltersInResponse:false)`;
+  const apiUrl = `https://www.linkedin.com/voyager/api/search/dash/clusters`
+    + `?decorationId=com.linkedin.voyager.dash.deco.search.SearchClusterCollection-175`
+    + `&count=${RECRUITER_PAGE_SIZE}`
+    + `&q=all`
+    + `&query=${query}`
+    + `&start=${start || 0}`;
+
+  console.log('[Recruiters] GET', apiUrl);
+
+  const apiResp = await fetch(apiUrl, {
+    headers: {
+      Cookie: cookieHeader,
+      'Csrf-Token': csrfToken,
+      'X-Li-Lang': 'en_US',
+      'X-Restli-Protocol-Version': '2.0.0',
+      Accept: 'application/vnd.linkedin.normalized+json+2.1',
+      'X-Li-Track': JSON.stringify({
+        clientVersion: '1.13.10654', mpVersion: '1.13.10654',
+        osName: 'web', timezoneOffset: 0, deviceFormFactor: 'DESKTOP', mpName: 'voyager-web',
+      }),
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      Referer: 'https://www.linkedin.com/search/results/people/',
+      'Accept-Language': 'en-US,en;q=0.9',
+    },
+  });
+
+  if (!apiResp.ok) {
+    const errText = await apiResp.text().catch(() => '');
+    throw new Error(`LinkedIn API ${apiResp.status}: ${errText.slice(0, 300)}`);
+  }
+
+  const data = await apiResp.json();
+
+  // Dash normalized JSON: cluster['*elements'] contains URN strings that point to
+  // SearchClusterHit objects in `included` — NOT inline objects. Build a URN lookup first.
+  const includedMap = new Map();
+  for (const item of (data.included || [])) {
+    if (item.entityUrn) includedMap.set(item.entityUrn, item);
+  }
+
+  console.log('[Recruiters] included:', includedMap.size, '| clusters:', (data.data?.elements || []).length);
+
+  const recruiters = [];
+  const clusters = data.data?.elements || data.elements || [];
+
+  for (const cluster of clusters) {
+    // '*elements' holds the URN refs; fall back to inline 'elements' if present
+    const hitRefs = cluster['*elements'] || cluster.elements || [];
+
+    for (const ref of hitRefs) {
+      // ref is either a URN string (dash format) or an inline object (old blended format)
+      const hit = typeof ref === 'string' ? includedMap.get(ref) : ref;
+      if (!hit) continue;
+
+      const name = hit.title?.text || '';
+      if (!name) continue;
+
+      const distValue = hit.memberDistance?.value || hit.distanceFromViewer?.value || '';
+      const badgeText = hit.badgeText?.text || '';
+      const degree =
+        distValue === 'DISTANCE_1' || badgeText === '1st' ? '1st' :
+        distValue === 'DISTANCE_2' || badgeText === '2nd' ? '2nd' : '3rd+';
+
+      const navUrl = hit.navigationUrl || '';
+      const pubIdMatch = navUrl.match(/\/in\/([^/?#]+)/);
+      const profileUrl = pubIdMatch ? `https://www.linkedin.com/in/${pubIdMatch[1]}/` : navUrl;
+
+      let photoUrl = '';
+      const imgAttr = hit.image?.attributes?.[0];
+      if (imgAttr?.detailData?.nonEntityProfilePicture) {
+        photoUrl = extractProfilePhoto(imgAttr.detailData.nonEntityProfilePicture);
+      } else if (imgAttr?.miniProfile?.picture) {
+        photoUrl = extractProfilePhoto(imgAttr.miniProfile.picture);
+      }
+
+      recruiters.push({
+        id: hit.entityUrn || hit.trackingUrn || String(Math.random()),
+        name,
+        headline: hit.primarySubtitle?.text || '',
+        location: hit.secondarySubtitle?.text || '',
+        degree,
+        profileUrl,
+        photoUrl,
+      });
+    }
+  }
+
+  return recruiters;
+}
+
+app.get('/api/recruiters/search', async (req, res) => {
+  const { keywords = 'recruiter', location = '', start = '0' } = req.query;
+  const liAt = req.headers['x-li-at'];
+  if (!liAt) return res.status(401).json({ error: 'LinkedIn li_at session cookie is required (x-li-at header)' });
+
+  try {
+    const recruiters = await searchLinkedInRecruiters({ keywords, location, start: Number(start), liAt });
+    res.json({ recruiters, hasMore: recruiters.length >= RECRUITER_PAGE_SIZE });
+  } catch (err) {
+    console.error('Recruiter search error:', err.message);
+    res.status(500).json({ error: err.message || 'Failed to search recruiters' });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`\nInterview Copilot server on port ${PORT}`);
