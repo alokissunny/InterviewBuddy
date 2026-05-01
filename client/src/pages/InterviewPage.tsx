@@ -157,7 +157,7 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
 
           {/* Tab switcher */}
           <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5 border border-gray-200 ml-1">
-            {([['interview', <Mic size={14} />, 'Interview'], ['jobs', <Search size={14} />, 'Jobs'], ['recruiters', <Users size={14} />, 'Recruiters'], ['profile', <User size={14} />, 'My Profile']] as const).map(([tab, icon, label]) => (
+            {([['interview', <Mic size={14} />, 'Interview'], ['jobs', <Search size={14} />, 'Jobs'], ['connections', <Users size={14} />, 'Connections'], ['profile', <User size={14} />, 'My Profile']] as const).map(([tab, icon, label]) => (
               <button key={tab} onClick={() => onTabChange(tab as MainTab)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   activeTab === tab ? 'bg-[#0A66C2] text-white shadow-md shadow-[#0A66C2]/30' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'

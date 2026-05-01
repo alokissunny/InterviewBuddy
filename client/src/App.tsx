@@ -5,9 +5,9 @@ import { SetupPage } from './pages/SetupPage';
 import { InterviewPage } from './pages/InterviewPage';
 import { JobsPage } from './pages/JobsPage';
 import { ProfilePage } from './pages/ProfilePage';
-import { RecruitersPage } from './pages/RecruitersPage';
+import { ConnectionsPage } from './pages/ConnectionsPage';
 
-export type MainTab = 'interview' | 'jobs' | 'profile' | 'recruiters';
+export type MainTab = 'interview' | 'jobs' | 'connections' | 'profile';
 
 const PROFILE_KEY = 'interview_copilot_profile';
 
@@ -26,10 +26,10 @@ function saveProfile(p: CandidateProfile) {
 
 function TabBar({ active, onChange }: { active: MainTab; onChange: (t: MainTab) => void }) {
   const tabs: { id: MainTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'interview',  label: 'Interview',  icon: <Mic size={14} /> },
-    { id: 'jobs',       label: 'Jobs',       icon: <Search size={14} /> },
-    { id: 'recruiters', label: 'Recruiters', icon: <Users size={14} /> },
-    { id: 'profile',    label: 'My Profile', icon: <User size={14} /> },
+    { id: 'interview',   label: 'Interview',   icon: <Mic size={14} /> },
+    { id: 'jobs',        label: 'Jobs',        icon: <Search size={14} /> },
+    { id: 'connections', label: 'Connections', icon: <Users size={14} /> },
+    { id: 'profile',     label: 'My Profile',  icon: <User size={14} /> },
   ];
   return (
     <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5 border border-gray-200">
@@ -96,7 +96,6 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-[#F3F2EF]">
-      {/* Non-interview tabs get a standalone header */}
       {activeTab !== 'interview' && (
         <header className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 shrink-0 shadow-sm">
           <div className="flex items-center gap-3">
@@ -125,8 +124,8 @@ export default function App() {
         {activeTab === 'jobs' && (
           <JobsPage profile={profile} />
         )}
-        {activeTab === 'recruiters' && (
-          <RecruitersPage />
+        {activeTab === 'connections' && (
+          <ConnectionsPage userProfile={profile} />
         )}
         {activeTab === 'profile' && (
           <ProfilePage profile={profile} onChangeProfile={handleChangeProfile} onUpdate={handleUpdateProfile} />

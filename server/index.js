@@ -415,6 +415,52 @@ app.post('/api/cv/tailor', async (req, res) => {
   }
 });
 
+// ─── Connection Message Generator ────────────────────────────────────────────
+app.post('/api/connections/message', async (req, res) => {
+  const { connection, userProfile, messageType } = req.body;
+  if (!connection || !userProfile) return res.status(400).json({ error: 'connection and userProfile are required' });
+
+  const typeInstructions = {
+    networking:  'A warm networking outreach. The sender wants to connect, learn about the recipient\'s work, and build a professional relationship. No ask for a job.',
+    job_seeker:  'A professional job-seeker outreach. The sender is exploring opportunities and hopes to learn about openings or the company culture at the recipient\'s organisation.',
+    referral:    'A polite referral or introduction request. The sender admires the recipient\'s company and would appreciate any insights, introductions, or a referral to the right team.',
+  };
+
+  const instruction = typeInstructions[messageType] || typeInstructions.networking;
+  const recipientDesc = [connection.position, connection.company].filter(Boolean).join(' at ');
+  const senderSkills = (userProfile.skills || []).slice(0, 6).join(', ');
+
+  const prompt = `Write a short, genuine LinkedIn DM.
+
+Sender: ${userProfile.name} — ${userProfile.title}
+${senderSkills ? `Key skills: ${senderSkills}` : ''}
+${userProfile.summary ? `Summary: ${userProfile.summary}` : ''}
+
+Recipient: ${connection.firstName} ${connection.lastName}${recipientDesc ? ` — ${recipientDesc}` : ''}
+
+Goal: ${instruction}
+
+Rules:
+- Start with "Hi ${connection.firstName},"
+- Max 3 short sentences — conversational, not salesy
+- Be specific to the recipient's role/company where possible
+- End with one soft, clear call to action
+- Return ONLY the message text, no subject line, no quotes`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 300,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const message = response.content[0].text.trim();
+    res.json({ message });
+  } catch (err) {
+    console.error('Message gen error:', err.message);
+    res.status(500).json({ error: err.message || 'Failed to generate message' });
+  }
+});
+
 // ─── LinkedIn Recruiters Search ───────────────────────────────────────────────
 const RECRUITER_PAGE_SIZE = 10;
 
