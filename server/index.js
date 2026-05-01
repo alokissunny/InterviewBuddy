@@ -273,9 +273,153 @@ app.post('/api/jobs/search', async (req, res) => {
   }
 });
 
+// ─── CV Tailor ───────────────────────────────────────────────────────────────
+function buildResumeHTML(profile, job) {
+  const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  const expHTML = (profile.experience || []).map(e => `
+    <div class="entry">
+      <div class="entry-header">
+        <div><div class="entry-title">${esc(e.role)}</div><div class="entry-subtitle">${esc(e.company)}</div></div>
+        <div class="entry-date">${esc(e.duration)}</div>
+      </div>
+      <ul class="bullets">${(e.highlights||[]).map(h=>`<li>${esc(h)}</li>`).join('')}</ul>
+    </div>`).join('');
+
+  const projHTML = (profile.projects || []).slice(0,3).map(p => `
+    <div class="entry">
+      <div class="entry-title">${esc(p.name)} <span class="tech">${esc((p.technologies||[]).join(', '))}</span></div>
+      <div class="entry-desc">${esc(p.description)}</div>
+    </div>`).join('');
+
+  const eduHTML = (profile.education || []).map(e => `
+    <div class="entry">
+      <div class="entry-header">
+        <div><div class="entry-title">${esc(e.degree)}</div><div class="entry-subtitle">${esc(e.institution)}</div></div>
+        <div class="entry-date">${esc(e.year)}</div>
+      </div>
+    </div>`).join('');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>${esc(profile.name)} — Resume</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;color:#1a1a1a;background:#e2e8f0;font-size:13px}
+.bar{background:#1e293b;color:#cbd5e1;text-align:center;padding:10px 16px;font-size:12px;display:flex;align-items:center;justify-content:center;gap:12px}
+.bar strong{color:#fff}.bar button{background:#3b82f6;color:#fff;border:none;padding:6px 18px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600}
+.bar button:hover{background:#2563eb}
+.page{background:#fff;max-width:820px;margin:20px auto;padding:44px 52px;box-shadow:0 4px 24px rgba(0,0,0,.1)}
+h1{font-size:26px;font-weight:700;color:#0f172a;letter-spacing:-.5px}
+.tagline{color:#3b82f6;font-size:14px;font-weight:600;margin-top:4px}
+.contact{color:#64748b;font-size:12px;margin-top:6px}
+.contact span{margin-right:16px}
+hr{border:none;border-top:1.5px solid #e2e8f0;margin:18px 0}
+h2{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:#3b82f6;margin-bottom:10px}
+.summary{color:#374151;line-height:1.65}
+.skills-wrap{display:flex;flex-wrap:wrap;gap:6px}
+.skill{background:#f1f5f9;color:#334155;padding:3px 11px;border-radius:99px;font-size:12px}
+.entry{margin-bottom:14px}
+.entry-header{display:flex;justify-content:space-between;align-items:flex-start}
+.entry-title{font-weight:600;color:#1e293b;font-size:13px}
+.entry-subtitle{color:#64748b;font-size:12px;margin-top:2px}
+.entry-date{color:#94a3b8;font-size:11px;white-space:nowrap;margin-left:10px;padding-top:2px}
+.bullets{list-style:disc;padding-left:18px;margin-top:5px}
+.bullets li{color:#374151;line-height:1.55;margin-bottom:3px}
+.tech{color:#6366f1;font-size:11px;font-weight:500;margin-left:6px}
+.entry-desc{color:#64748b;font-size:12px;margin-top:3px}
+.ach-list{list-style:disc;padding-left:18px}
+.ach-list li{color:#374151;line-height:1.55;margin-bottom:3px}
+@media print{body{background:#fff}.bar{display:none}.page{margin:0;padding:28px 36px;box-shadow:none;max-width:100%}}
+</style>
+</head>
+<body>
+<div class="bar">
+  Tailored for <strong>${esc(job.title)}</strong> at <strong>${esc(job.company)}</strong>
+  <button onclick="window.print()">⬇ Save as PDF</button>
+</div>
+<div class="page">
+  <h1>${esc(profile.name)}</h1>
+  <div class="tagline">${esc(profile.title)}</div>
+  <div class="contact">
+    ${profile.email ? `<span>✉ ${esc(profile.email)}</span>` : ''}
+    ${profile.phone ? `<span>✆ ${esc(profile.phone)}</span>` : ''}
+  </div>
+  <hr/>
+  <h2>Summary</h2>
+  <p class="summary">${esc(profile.summary)}</p>
+  <hr/>
+  <h2>Skills</h2>
+  <div class="skills-wrap">${(profile.skills||[]).map(s=>`<span class="skill">${esc(s)}</span>`).join('')}</div>
+  ${expHTML ? `<hr/><h2>Experience</h2>${expHTML}` : ''}
+  ${projHTML ? `<hr/><h2>Projects</h2>${projHTML}` : ''}
+  ${eduHTML  ? `<hr/><h2>Education</h2>${eduHTML}` : ''}
+  ${(profile.achievements||[]).length ? `<hr/><h2>Achievements</h2><ul class="ach-list">${(profile.achievements).map(a=>`<li>${esc(a)}</li>`).join('')}</ul>` : ''}
+</div>
+</body>
+</html>`;
+}
+
+app.post('/api/cv/tailor', async (req, res) => {
+  const { profile, job } = req.body;
+  if (!profile || !job) return res.status(400).json({ error: 'profile and job are required' });
+
+  // Best-effort: scrape job description from LinkedIn if missing
+  let description = job.description || '';
+  if (!description && job.applyUrl && job.applyUrl.includes('linkedin.com')) {
+    try {
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 5000);
+      const r = await fetch(job.applyUrl, {
+        signal: controller.signal,
+        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+      });
+      clearTimeout(tid);
+      if (r.ok) {
+        const $ = cheerio.load(await r.text());
+        description = ($('.show-more-less-html__markup').text() || $('.description__text').text()).trim().slice(0, 3000);
+      }
+    } catch { /* ignore timeout / block */ }
+  }
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 3000,
+      messages: [{
+        role: 'user',
+        content: `Tailor this resume for the job below. Rules:
+- Rewrite summary (3-4 sentences) to directly target this role
+- Reorder skills: most relevant first, keep all of them
+- Adjust experience highlights to emphasise relevant impact — reframe existing bullets, never invent facts
+- Select up to 3 most relevant projects
+
+JOB:
+Title: ${job.title}
+Company: ${job.company}
+${description ? `Description:\n${description}` : ''}
+
+CANDIDATE (JSON):
+${JSON.stringify(profile, null, 2)}
+
+Return ONLY valid JSON with the exact same structure as the input.`
+      }],
+    });
+
+    let text = response.content[0].text.trim();
+    if (text.startsWith('```')) text = text.replace(/^```json?\n?/,'').replace(/\n?```$/,'').trim();
+    const tailored = JSON.parse(text);
+    res.json({ html: buildResumeHTML(tailored, job) });
+  } catch (err) {
+    console.error('Tailor error:', err.message);
+    res.status(500).json({ error: err.message || 'Failed to tailor resume' });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`\nInterview Copilot server on port ${PORT}`);
   console.log(`Whisper: ${process.env.OPENAI_API_KEY ? 'server key configured' : 'client must provide key'}`);
-  console.log(`Jobs (Apify): ${process.env.APIFY_API_TOKEN ? 'configured' : 'APIFY_API_TOKEN missing'}`);
 });

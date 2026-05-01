@@ -221,7 +221,7 @@ export function JobsPage({ profile }: JobsPageProps) {
               </button>
             </div>
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-              {jobs.map((job, i) => <JobCard key={job.id || i} job={job} />)}
+              {jobs.map((job, i) => <JobCard key={job.id || i} job={job} profile={profile} />)}
             </div>
             {hasMore && (
               <div className="flex justify-center mt-6">

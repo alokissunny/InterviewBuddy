@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { MapPin, Building2, Clock, ExternalLink, ChevronDown, ChevronUp, Briefcase } from 'lucide-react';
+import { MapPin, Building2, Clock, ExternalLink, ChevronDown, ChevronUp, Briefcase, FileText, Loader2 } from 'lucide-react';
+import { CandidateProfile } from '../types';
 
 export interface Job {
   id?: string;
@@ -18,10 +19,35 @@ export interface Job {
 
 interface JobCardProps {
   job: Job;
+  profile: CandidateProfile;
 }
 
-export function JobCard({ job }: JobCardProps) {
+export function JobCard({ job, profile }: JobCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [tailoring, setTailoring] = useState(false);
+  const [tailorError, setTailorError] = useState<string | null>(null);
+
+  const handleTailor = async () => {
+    setTailoring(true);
+    setTailorError(null);
+    try {
+      const res = await fetch('/api/cv/tailor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile, job }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+      const blob = new Blob([data.html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      setTailorError(err instanceof Error ? err.message : 'Failed to tailor resume');
+    } finally {
+      setTailoring(false);
+    }
+  };
 
   return (
     <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl overflow-hidden hover:border-slate-600/70 transition-all duration-200">
@@ -108,6 +134,23 @@ export function JobCard({ job }: JobCardProps) {
             )}
           </div>
         )}
+
+        {/* Tailor Resume */}
+        <div className="mt-3 pt-3 border-t border-slate-700/50">
+          <button
+            onClick={handleTailor}
+            disabled={tailoring}
+            className="flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+          >
+            {tailoring
+              ? <><Loader2 size={12} className="animate-spin" /> Tailoring resume...</>
+              : <><FileText size={12} /> Tailor resume for this role</>
+            }
+          </button>
+          {tailorError && (
+            <p className="text-xs text-red-400 mt-1">{tailorError}</p>
+          )}
+        </div>
       </div>
     </div>
   );

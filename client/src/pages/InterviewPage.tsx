@@ -3,6 +3,7 @@ import {
   Mic, MicOff, RotateCcw, User, Briefcase, ChevronDown, ChevronUp,
   Zap, Monitor, MonitorOff, AlertCircle, Info, Settings, Search
 } from 'lucide-react';
+import { MainTab } from '../App';
 import { CandidateProfile, TranscriptEntry } from '../types';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useSystemAudioCapture } from '../hooks/useSystemAudioCapture';
@@ -20,8 +21,8 @@ interface InterviewPageProps {
   profile: CandidateProfile;
   onReset: () => void;
   onChangeProfile: () => void;
-  onTabChange: (tab: 'interview' | 'jobs') => void;
-  activeTab: 'interview' | 'jobs';
+  onTabChange: (tab: MainTab) => void;
+  activeTab: MainTab;
 }
 
 export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, activeTab }: InterviewPageProps) {
@@ -169,6 +170,14 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
               }`}
             >
               <Search size={12} /> Jobs
+            </button>
+            <button
+              onClick={() => onTabChange('profile')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                activeTab === 'profile' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <User size={12} /> My Profile
             </button>
           </div>
         </div>

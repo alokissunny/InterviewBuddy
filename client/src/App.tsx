@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Briefcase, Mic, Search } from 'lucide-react';
+import { Briefcase, Mic, Search, User } from 'lucide-react';
 import { CandidateProfile } from './types';
 import { SetupPage } from './pages/SetupPage';
 import { InterviewPage } from './pages/InterviewPage';
 import { JobsPage } from './pages/JobsPage';
+import { ProfilePage } from './pages/ProfilePage';
 
-type MainTab = 'interview' | 'jobs';
+export type MainTab = 'interview' | 'jobs' | 'profile';
 
 const PROFILE_KEY = 'interview_copilot_profile';
 
@@ -40,6 +41,14 @@ function TabBar({ active, onChange }: { active: MainTab; onChange: (t: MainTab) 
         }`}
       >
         <Search size={12} /> Jobs
+      </button>
+      <button
+        onClick={() => onChange('profile')}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+          active === 'profile' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+        }`}
+      >
+        <User size={12} /> My Profile
       </button>
     </div>
   );
@@ -76,6 +85,11 @@ export default function App() {
     setPage('setup');
   };
 
+  const handleUpdateProfile = (p: CandidateProfile) => {
+    saveProfile(p);
+    setProfile(p);
+  };
+
   if (page === 'setup' || !profile) {
     return (
       <SetupPage
@@ -88,8 +102,8 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-slate-900">
-      {/* Jobs page gets a standalone header with tab bar */}
-      {activeTab === 'jobs' && (
+      {/* Non-interview tabs get a standalone header */}
+      {activeTab !== 'interview' && (
         <header className="flex items-center justify-between px-4 py-3 bg-slate-800/80 border-b border-slate-700/50 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
@@ -103,8 +117,7 @@ export default function App() {
       )}
 
       <div className="flex-1 overflow-hidden">
-        {activeTab === 'interview' ? (
-          /* Interview page renders its own full header including the tab bar */
+        {activeTab === 'interview' && (
           <InterviewPage
             profile={profile}
             onReset={handleReset}
@@ -112,8 +125,12 @@ export default function App() {
             activeTab={activeTab}
             onTabChange={setActiveTab}
           />
-        ) : (
+        )}
+        {activeTab === 'jobs' && (
           <JobsPage profile={profile} />
+        )}
+        {activeTab === 'profile' && (
+          <ProfilePage profile={profile} onChangeProfile={handleChangeProfile} onUpdate={handleUpdateProfile} />
         )}
       </div>
     </div>
