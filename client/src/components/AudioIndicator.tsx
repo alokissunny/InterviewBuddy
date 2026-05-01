@@ -15,25 +15,25 @@ export function AudioIndicator({ isListening, isAnalyzing, mode = 'mic' }: Audio
     : (mode === 'mic' ? MicOff : MonitorOff);
 
   const label = isAnalyzing
-    ? 'Processing...'
+    ? 'Processing…'
     : isListening
       ? (mode === 'system' ? 'Capturing' : mode === 'both' ? 'Mic + System' : 'Listening')
       : 'Idle';
 
   return (
     <div className="flex items-center gap-3">
-      <div className={`relative flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 ${
-        isListening ? 'bg-green-500/20 ring-2 ring-green-500/50' : 'bg-slate-700'
+      <div className={`relative flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-300 ${
+        isListening ? 'bg-green-500/20 ring-2 ring-green-500/40 shadow-lg shadow-green-500/10' : 'bg-slate-700/80'
       }`}>
-        <Icon size={18} className={isListening ? 'text-green-400' : 'text-slate-500'} />
-        {isListening && <span className="absolute inset-0 rounded-full bg-green-500/20 animate-ping" />}
+        <Icon size={16} className={isListening ? 'text-green-400' : 'text-slate-500'} />
+        {isListening && <span className="absolute inset-0 rounded-xl bg-green-500/15 animate-ping" />}
       </div>
 
-      <div className="flex flex-col">
-        <span className="text-xs font-medium text-slate-300">{label}</span>
+      <div className="flex flex-col gap-0.5">
+        <span className="text-sm font-medium text-slate-200">{label}</span>
         {isAnalyzing && (
-          <div className="flex items-center gap-1 mt-0.5">
-            <Loader2 size={10} className="text-blue-400 animate-spin" />
+          <div className="flex items-center gap-1.5">
+            <Loader2 size={11} className="text-blue-400 animate-spin" />
             <span className="text-xs text-blue-400">Generating response</span>
           </div>
         )}

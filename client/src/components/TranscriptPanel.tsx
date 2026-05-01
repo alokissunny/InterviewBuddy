@@ -26,22 +26,22 @@ function EntryRow({ entry, onAnalyze, onUpdate, isAnalyzing }: {
   };
 
   return (
-    <div className="group flex gap-2 items-start p-2 rounded-lg hover:bg-slate-700/50 transition-colors animate-slide-up">
-      <span className="text-xs text-slate-500 mt-1 shrink-0 w-12 text-right">
+    <div className="group flex gap-3 items-start px-4 py-2.5 rounded-xl hover:bg-slate-700/40 transition-colors animate-slide-up">
+      <span className="text-xs text-slate-600 mt-1 shrink-0 w-14 text-right font-mono tabular-nums">
         {entry.timestamp.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
       </span>
       <div className="flex-1 min-w-0">
         {editing ? (
-          <div className="flex gap-1">
+          <div className="flex gap-2">
             <input
               autoFocus
-              className="flex-1 bg-slate-600 text-slate-100 text-sm rounded px-2 py-0.5 outline-none border border-blue-500/50"
+              className="flex-1 bg-slate-700 text-slate-100 text-sm rounded-lg px-3 py-1.5 outline-none border border-blue-500/60"
               value={editText}
               onChange={e => setEditText(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
             />
-            <button onClick={save} className="text-green-400 hover:text-green-300">
-              <Check size={14} />
+            <button onClick={save} className="text-green-400 hover:text-green-300 p-1">
+              <Check size={15} />
             </button>
           </div>
         ) : (
@@ -49,20 +49,12 @@ function EntryRow({ entry, onAnalyze, onUpdate, isAnalyzing }: {
         )}
       </div>
       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-        <button
-          onClick={() => setEditing(true)}
-          className="p-1 text-slate-400 hover:text-slate-200 rounded"
-          title="Edit"
-        >
-          <Edit3 size={12} />
+        <button onClick={() => setEditing(true)} className="p-1.5 text-slate-500 hover:text-slate-200 rounded-lg hover:bg-slate-600/50" title="Edit">
+          <Edit3 size={13} />
         </button>
-        <button
-          onClick={() => onAnalyze(entry.text)}
-          disabled={isAnalyzing}
-          className="p-1 text-blue-400 hover:text-blue-300 rounded disabled:opacity-40"
-          title="Analyze this"
-        >
-          <Zap size={12} />
+        <button onClick={() => onAnalyze(entry.text)} disabled={isAnalyzing}
+          className="p-1.5 text-blue-400 hover:text-blue-300 rounded-lg hover:bg-blue-500/10 disabled:opacity-40" title="Analyze this">
+          <Zap size={13} />
         </button>
       </div>
     </div>
@@ -79,48 +71,44 @@ export function TranscriptPanel({ entries, interimText, onAnalyze, onClear, onUp
   const recentEntries = entries.slice(-20);
 
   return (
-    <div className="flex flex-col h-full bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50 shrink-0">
-        <div className="flex items-center gap-2">
-          <MessageSquare size={16} className="text-blue-400" />
-          <span className="text-sm font-semibold text-slate-200">Live Transcript</span>
-          <span className="text-xs text-slate-500 bg-slate-700 rounded-full px-2 py-0.5">{entries.length}</span>
-        </div>
-        <div className="flex items-center gap-2">
+    <div className="flex flex-col h-full card overflow-hidden">
+      <div className="panel-header">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-blue-500/20 flex items-center justify-center">
+            <MessageSquare size={14} className="text-blue-400" />
+          </div>
+          <span className="text-base font-semibold text-white">Live Transcript</span>
           {entries.length > 0 && (
-            <button
-              onClick={onClear}
-              className="flex items-center gap-1 text-xs text-slate-400 hover:text-red-400 transition-colors"
-            >
-              <Trash2 size={12} />
-              Clear
-            </button>
+            <span className="text-xs text-slate-400 bg-slate-700/80 rounded-full px-2.5 py-0.5 font-medium">{entries.length}</span>
           )}
         </div>
+        {entries.length > 0 && (
+          <button onClick={onClear} className="btn-ghost text-xs hover:text-red-400">
+            <Trash2 size={13} /> Clear
+          </button>
+        )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+      <div className="flex-1 overflow-y-auto py-2">
         {recentEntries.length === 0 && !interimText && (
-          <div className="flex flex-col items-center justify-center h-full text-center px-4">
-            <MessageSquare size={32} className="text-slate-600 mb-3" />
-            <p className="text-slate-500 text-sm">Waiting for speech...</p>
-            <p className="text-slate-600 text-xs mt-1">Click microphone to start listening</p>
+          <div className="flex flex-col items-center justify-center h-full text-center px-6 gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-slate-700/60 flex items-center justify-center">
+              <MessageSquare size={24} className="text-slate-600" />
+            </div>
+            <div>
+              <p className="text-slate-400 font-medium">Waiting for speech…</p>
+              <p className="text-slate-600 text-sm mt-1">Click Start Listening to begin</p>
+            </div>
           </div>
         )}
 
         {recentEntries.map(entry => (
-          <EntryRow
-            key={entry.id}
-            entry={entry}
-            onAnalyze={onAnalyze}
-            onUpdate={onUpdateEntry}
-            isAnalyzing={isAnalyzing}
-          />
+          <EntryRow key={entry.id} entry={entry} onAnalyze={onAnalyze} onUpdate={onUpdateEntry} isAnalyzing={isAnalyzing} />
         ))}
 
         {interimText && (
-          <div className="flex gap-2 items-start p-2">
-            <span className="text-xs text-slate-600 mt-1 shrink-0 w-12 text-right">live</span>
+          <div className="flex gap-3 items-start px-4 py-2.5">
+            <span className="text-xs text-slate-600 mt-1 shrink-0 w-14 text-right font-mono">live</span>
             <p className="text-sm text-slate-500 italic leading-relaxed">{interimText}</p>
           </div>
         )}
@@ -129,16 +117,13 @@ export function TranscriptPanel({ entries, interimText, onAnalyze, onClear, onUp
       </div>
 
       {entries.length > 0 && (
-        <div className="px-4 py-2 border-t border-slate-700/50 shrink-0">
+        <div className="px-4 py-3 border-t border-slate-700/60 shrink-0">
           <button
-            onClick={() => {
-              const recent = entries.slice(-5).map(e => e.text).join(' ');
-              onAnalyze(recent);
-            }}
+            onClick={() => onAnalyze(entries.slice(-5).map(e => e.text).join(' '))}
             disabled={isAnalyzing}
-            className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-blue-500/20 transition-all"
           >
-            <Zap size={14} />
+            <Zap size={15} />
             Analyze Recent Speech
           </button>
         </div>

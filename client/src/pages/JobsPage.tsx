@@ -38,19 +38,15 @@ function normaliseJob(raw: Record<string, any>): Job {
   };
 }
 
+const selectCls = 'bg-slate-700/60 border border-slate-700 focus:border-blue-500 rounded-xl px-3 py-2.5 text-sm text-slate-200 outline-none cursor-pointer hover:border-slate-600 transition-colors';
+
 export function JobsPage({ profile }: JobsPageProps) {
   const [prefs, setPrefs] = useState<SearchPrefs>(() => {
     try {
       const saved = localStorage.getItem(PREFS_KEY);
       if (saved) return JSON.parse(saved);
     } catch {}
-    return {
-      keywords: profile.title || '',
-      location: '',
-      jobType: '',
-      experienceLevel: '',
-      datePosted: 'Past Week',
-    };
+    return { keywords: profile.title || '', location: '', jobType: '', experienceLevel: '', datePosted: 'Past Week' };
   });
 
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -98,7 +94,6 @@ export function JobsPage({ profile }: JobsPageProps) {
   const search = () => fetchJobs(0, false);
   const loadMore = () => fetchJobs(start, true);
 
-  // Auto-search on mount if keywords are pre-filled
   useEffect(() => {
     if (prefs.keywords.trim()) fetchJobs(0, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -107,57 +102,54 @@ export function JobsPage({ profile }: JobsPageProps) {
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-900">
       {/* Search bar */}
-      <div className="shrink-0 px-4 py-3 bg-slate-800/70 border-b border-slate-700/50">
-        <div className="flex flex-wrap gap-2 items-end">
-          <div className="flex-1 min-w-44">
-            <label className="text-xs text-slate-500 mb-1 block">Job title / keywords</label>
+      <div className="shrink-0 px-5 py-4 bg-slate-800/80 border-b border-slate-700/60 shadow-sm">
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="flex-1 min-w-52">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Job title / keywords</label>
             <div className="relative">
-              <Briefcase size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <Briefcase size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
                 value={prefs.keywords}
                 onChange={e => updatePref('keywords', e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && search()}
                 placeholder="e.g. Product Manager"
-                className="w-full bg-slate-700/60 border border-slate-600 focus:border-blue-500 rounded-lg pl-8 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 outline-none transition-colors"
+                className="w-full bg-slate-700/60 border border-slate-700 hover:border-slate-600 focus:border-blue-500 rounded-xl pl-9 pr-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-500 outline-none transition-colors"
               />
             </div>
           </div>
 
-          <div className="flex-1 min-w-32">
-            <label className="text-xs text-slate-500 mb-1 block">Location</label>
+          <div className="flex-1 min-w-36">
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Location</label>
             <div className="relative">
-              <MapPin size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <MapPin size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
                 value={prefs.location}
                 onChange={e => updatePref('location', e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && search()}
                 placeholder="City or Remote"
-                className="w-full bg-slate-700/60 border border-slate-600 focus:border-blue-500 rounded-lg pl-8 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 outline-none transition-colors"
+                className="w-full bg-slate-700/60 border border-slate-700 hover:border-slate-600 focus:border-blue-500 rounded-xl pl-9 pr-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-500 outline-none transition-colors"
               />
             </div>
           </div>
 
-          <div className="flex gap-2 items-end flex-wrap">
+          <div className="flex gap-2.5 items-end flex-wrap">
             <div>
-              <label className="text-xs text-slate-500 mb-1 flex items-center gap-1"><SlidersHorizontal size={10} />Type</label>
-              <select value={prefs.jobType} onChange={e => updatePref('jobType', e.target.value)}
-                className="bg-slate-700/60 border border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1"><SlidersHorizontal size={10} />Type</label>
+              <select value={prefs.jobType} onChange={e => updatePref('jobType', e.target.value)} className={selectCls}>
                 {JOB_TYPES.map(t => <option key={t} value={t}>{t || 'Any type'}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Level</label>
-              <select value={prefs.experienceLevel} onChange={e => updatePref('experienceLevel', e.target.value)}
-                className="bg-slate-700/60 border border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Level</label>
+              <select value={prefs.experienceLevel} onChange={e => updatePref('experienceLevel', e.target.value)} className={selectCls}>
                 {EXP_LEVELS.map(l => <option key={l} value={l}>{l || 'Any level'}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs text-slate-500 mb-1 block">Posted</label>
-              <select value={prefs.datePosted} onChange={e => updatePref('datePosted', e.target.value)}
-                className="bg-slate-700/60 border border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none">
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Posted</label>
+              <select value={prefs.datePosted} onChange={e => updatePref('datePosted', e.target.value)} className={selectCls}>
                 {DATE_OPTIONS.map(d => <option key={d} value={d}>{d || 'Any time'}</option>)}
               </select>
             </div>
@@ -165,73 +157,86 @@ export function JobsPage({ profile }: JobsPageProps) {
             <button
               onClick={search}
               disabled={isLoading || !prefs.keywords.trim()}
-              className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors"
+              className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl shadow-lg shadow-blue-500/20 transition-all"
             >
-              {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
-              {isLoading ? 'Searching...' : 'Search'}
+              {isLoading ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
+              {isLoading ? 'Searching…' : 'Search'}
             </button>
           </div>
         </div>
       </div>
 
       {/* Results */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-5">
         {error && (
-          <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-xl mb-4">
-            <AlertCircle size={15} className="text-red-400 shrink-0" />
+          <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl mb-5">
+            <AlertCircle size={16} className="text-red-400 shrink-0" />
             <p className="text-red-400 text-sm">{error}</p>
           </div>
         )}
 
         {isLoading && (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <Loader2 size={32} className="text-blue-400 animate-spin" />
-            <p className="text-slate-400 text-sm">Scraping LinkedIn jobs...</p>
-            <p className="text-slate-600 text-xs">This takes a few seconds</p>
+          <div className="flex flex-col items-center justify-center py-24 gap-5">
+            <div className="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center">
+              <Loader2 size={28} className="text-blue-400 animate-spin" />
+            </div>
+            <div className="text-center">
+              <p className="text-slate-300 font-medium">Scraping LinkedIn jobs…</p>
+              <p className="text-slate-500 text-sm mt-1">This takes a few seconds</p>
+            </div>
           </div>
         )}
 
         {!isLoading && searched && jobs.length === 0 && !error && (
-          <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <Briefcase size={36} className="text-slate-700" />
-            <p className="text-slate-500 text-sm">No jobs found — try broader keywords or a different location</p>
-            <button onClick={search} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200">
-              <RefreshCw size={12} /> Retry
+          <div className="flex flex-col items-center justify-center py-24 gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-slate-700/60 flex items-center justify-center">
+              <Briefcase size={28} className="text-slate-600" />
+            </div>
+            <div className="text-center">
+              <p className="text-slate-400 font-medium">No jobs found</p>
+              <p className="text-slate-500 text-sm mt-1">Try broader keywords or a different location</p>
+            </div>
+            <button onClick={search} className="btn-ghost mt-1">
+              <RefreshCw size={14} /> Retry
             </button>
           </div>
         )}
 
         {!isLoading && !searched && (
-          <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <Search size={36} className="text-slate-700" />
-            <p className="text-slate-500 text-sm">Enter a job title and hit Search</p>
-            <p className="text-slate-600 text-xs">Keywords pre-filled from your CV profile</p>
+          <div className="flex flex-col items-center justify-center py-24 gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-slate-700/60 flex items-center justify-center">
+              <Search size={28} className="text-slate-600" />
+            </div>
+            <div className="text-center">
+              <p className="text-slate-400 font-medium">Ready to search</p>
+              <p className="text-slate-500 text-sm mt-1">Keywords pre-filled from your CV profile</p>
+            </div>
           </div>
         )}
 
         {!isLoading && jobs.length > 0 && (
           <>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-slate-500">
-                {jobs.length} jobs · <span className="text-slate-300">"{prefs.keywords}"</span>
-                {prefs.location ? ` in ${prefs.location}` : ''}
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm text-slate-400">
+                <span className="font-semibold text-slate-200">{jobs.length} jobs</span>
+                {' · '}"{prefs.keywords}"{prefs.location ? ` in ${prefs.location}` : ''}
               </p>
-              <button onClick={search} className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors">
-                <RefreshCw size={11} /> Refresh
+              <button onClick={search} className="btn-ghost text-sm">
+                <RefreshCw size={13} /> Refresh
               </button>
             </div>
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
               {jobs.map((job, i) => <JobCard key={job.id || i} job={job} profile={profile} />)}
             </div>
             {hasMore && (
-              <div className="flex justify-center mt-6">
+              <div className="flex justify-center mt-8">
                 <button
                   onClick={loadMore}
                   disabled={isLoadingMore}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-slate-200 text-sm font-medium rounded-lg transition-colors"
+                  className="flex items-center gap-2 px-8 py-3 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-slate-200 text-sm font-semibold rounded-xl border border-slate-600 transition-all"
                 >
-                  {isLoadingMore ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                  {isLoadingMore ? 'Loading...' : 'Load More'}
+                  {isLoadingMore ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+                  {isLoadingMore ? 'Loading…' : 'Load More'}
                 </button>
               </div>
             )}

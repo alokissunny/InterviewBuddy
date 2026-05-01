@@ -143,42 +143,29 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
   return (
     <div className="h-screen bg-slate-900 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3 bg-slate-800/80 border-b border-slate-700/50 backdrop-blur shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-            <Briefcase size={15} className="text-white" />
-          </div>
-          <div>
-            <span className="text-white font-semibold text-sm">Interview Copilot</span>
-            <span className="text-slate-500 text-xs ml-2">· {profile.name}</span>
+      <header className="flex items-center justify-between px-6 py-4 bg-slate-800/90 border-b border-slate-700/60 shrink-0 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+              <Briefcase size={17} className="text-white" />
+            </div>
+            <div>
+              <span className="text-white font-bold text-base">Interview Copilot</span>
+              <span className="text-slate-500 text-sm ml-2">· {profile.name}</span>
+            </div>
           </div>
 
           {/* Tab switcher */}
-          <div className="flex items-center bg-slate-700/60 rounded-lg p-0.5 gap-0.5 ml-2">
-            <button
-              onClick={() => onTabChange('interview')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                activeTab === 'interview' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Mic size={12} /> Interview
-            </button>
-            <button
-              onClick={() => onTabChange('jobs')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                activeTab === 'jobs' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Search size={12} /> Jobs
-            </button>
-            <button
-              onClick={() => onTabChange('profile')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                activeTab === 'profile' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <User size={12} /> My Profile
-            </button>
+          <div className="flex items-center bg-slate-900/60 rounded-xl p-1 gap-0.5 border border-slate-700/60 ml-1">
+            {([['interview', <Mic size={14} />, 'Interview'], ['jobs', <Search size={14} />, 'Jobs'], ['profile', <User size={14} />, 'My Profile']] as const).map(([tab, icon, label]) => (
+              <button key={tab} onClick={() => onTabChange(tab as MainTab)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === tab ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                }`}
+              >
+                {icon} {label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -262,7 +249,7 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
       )}
 
       {/* Main content */}
-      <div className="flex-1 flex gap-3 p-3 overflow-hidden min-h-0">
+      <div className="flex-1 flex gap-4 p-4 overflow-hidden min-h-0">
         <div className="w-2/5 flex flex-col overflow-hidden">
           <TranscriptPanel
             entries={entries}
@@ -284,22 +271,22 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
       </div>
 
       {/* Bottom bar */}
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-800/80 border-t border-slate-700/50 shrink-0">
+      <div className="flex items-center justify-between px-5 py-3.5 bg-slate-800/90 border-t border-slate-700/60 shrink-0">
         {/* Status */}
-        <div className="flex flex-col gap-0.5 min-w-0">
+        <div className="flex flex-col gap-1 min-w-0">
           {audioMode === 'mic' && !micSupported && (
-            <p className="text-xs text-amber-400">Mic not supported — use Chrome or Edge</p>
+            <p className="text-sm text-amber-400">Mic not supported — use Chrome or Edge</p>
           )}
           {needsKey && (
-            <p className="text-xs text-amber-400 flex items-center gap-1">
-              <AlertCircle size={11} />
+            <p className="text-sm text-amber-400 flex items-center gap-1.5">
+              <AlertCircle size={13} />
               API key required for computer audio —
               <button onClick={() => setShowKeyModal(true)} className="underline hover:text-amber-300">add key</button>
             </p>
           )}
           {(audioMode === 'system' || audioMode === 'both') && (serverHasKey || whisperKey) && (
-            <p className="text-xs text-slate-500 flex items-center gap-1">
-              <Info size={11} className="text-blue-400" />
+            <p className="text-sm text-slate-500 flex items-center gap-1.5">
+              <Info size={13} className="text-blue-400" />
               {whisperKey
                 ? (whisperKey.startsWith('gsk_') ? 'Using Groq Whisper (free)' : 'Using your OpenAI key')
                 : 'Using server OpenAI key'}
@@ -308,7 +295,7 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
             </p>
           )}
           {statusMessage() && (
-            <p className={`text-xs ${isActive ? 'text-green-400' : 'text-slate-500'}`}>
+            <p className={`text-sm ${isActive ? 'text-green-400' : 'text-slate-500'}`}>
               {statusMessage()}
             </p>
           )}
@@ -316,35 +303,35 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
 
         <div className="flex items-center gap-3 shrink-0">
           {/* Audio source toggle */}
-          <div className="flex items-center bg-slate-700/60 rounded-lg p-0.5 gap-0.5">
+          <div className="flex items-center bg-slate-700/60 rounded-xl p-1 gap-0.5 border border-slate-700">
             {(['mic', 'system', 'both'] as AudioMode[]).map(mode => (
               <button
                 key={mode}
                 onClick={() => { if (!isActive) setAudioMode(mode); }}
                 disabled={isActive}
                 title={getModeLabel(mode)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all disabled:cursor-not-allowed ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all disabled:cursor-not-allowed ${
                   audioMode === mode
-                    ? 'bg-blue-600 text-white shadow'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
                     : 'text-slate-400 hover:text-slate-200 disabled:opacity-40'
                 }`}
               >
-                {mode === 'mic' && <Mic size={12} />}
-                {mode === 'system' && <Monitor size={12} />}
-                {mode === 'both' && <span className="text-[10px] font-bold leading-none">M+C</span>}
+                {mode === 'mic' && <Mic size={13} />}
+                {mode === 'system' && <Monitor size={13} />}
+                {mode === 'both' && <span className="text-xs font-bold leading-none">M+C</span>}
                 {mode === 'mic' ? 'Mic' : mode === 'system' ? 'Computer' : 'Both'}
               </button>
             ))}
           </div>
 
-          {/* Settings — always visible for system/both mode */}
+          {/* Settings */}
           {(audioMode === 'system' || audioMode === 'both') && (
             <button
               onClick={() => setShowKeyModal(true)}
-              className="p-2 text-slate-400 hover:text-slate-200 bg-slate-700/60 rounded-lg transition-colors"
+              className="p-2.5 text-slate-400 hover:text-slate-200 bg-slate-700/60 hover:bg-slate-700 rounded-xl border border-slate-700 transition-all"
               title="Change transcription API key"
             >
-              <Settings size={15} />
+              <Settings size={16} />
             </button>
           )}
 
@@ -353,24 +340,20 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
             <button
               onClick={() => analyze(entries.slice(-5).map(e => e.text).join(' '))}
               disabled={isAnalyzing}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-slate-200 text-sm rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-slate-200 text-sm font-medium rounded-xl border border-slate-600 transition-all"
             >
-              <Zap size={14} />
-              Analyze
+              <Zap size={15} /> Analyze
             </button>
           )}
 
           {/* Start / Stop */}
           <button
             onClick={isActive ? handleStop : handleStart}
-            disabled={
-              (!isActive && audioMode === 'mic' && !micSupported) ||
-              (!isActive && needsKey)
-            }
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+            disabled={(!isActive && audioMode === 'mic' && !micSupported) || (!isActive && needsKey)}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               isActive
-                ? 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-500/20'
-                : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20'
+                ? 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-500/25'
+                : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/25'
             }`}
           >
             {isActive

@@ -7,6 +7,10 @@ const OpenAI = require('openai');
 const { toFile } = require('openai');
 const pdfParse = require('pdf-parse');
 const cheerio = require('cheerio');
+const fs = require('fs');
+const path = require('path');
+
+const TAILOR_PROMPT_PATH = path.join(__dirname, 'tailor-prompt.md');
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
@@ -332,12 +336,12 @@ h2{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;
 .entry-desc{color:#64748b;font-size:12px;margin-top:3px}
 .ach-list{list-style:disc;padding-left:18px}
 .ach-list li{color:#374151;line-height:1.55;margin-bottom:3px}
-@media print{body{background:#fff}.bar{display:none}.page{margin:0;padding:28px 36px;box-shadow:none;max-width:100%}}
+@media print{@page{margin:0;size:A4}body{background:#fff}.bar{display:none}.page{margin:0;padding:1.5cm 2cm;box-shadow:none;max-width:100%}}
 </style>
 </head>
 <body>
 <div class="bar">
-  Tailored for <strong>${esc(job.title)}</strong> at <strong>${esc(job.company)}</strong>
+  Tailored for <strong>${esc(job.title)}</strong>
   <button onclick="window.print()">⬇ Save as PDF</button>
 </div>
 <div class="page">
@@ -385,27 +389,20 @@ app.post('/api/cv/tailor', async (req, res) => {
   }
 
   try {
+    const promptTemplate = fs.readFileSync(TAILOR_PROMPT_PATH, 'utf-8');
+    const promptContent = promptTemplate
+      .replace('{{job.title}}', job.title || '')
+      .replace('{{description}}', description ? `Description:\n${description}` : '')
+      .replace('{{profile}}', JSON.stringify(profile, null, 2));
+
+    console.log('\n─── Tailor Prompt ───────────────────────────────────────\n');
+    console.log(promptContent);
+    console.log('─────────────────────────────────────────────────────────\n');
+
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 3000,
-      messages: [{
-        role: 'user',
-        content: `Tailor this resume for the job below. Rules:
-- Rewrite summary (3-4 sentences) to directly target this role
-- Reorder skills: most relevant first, keep all of them
-- Adjust experience highlights to emphasise relevant impact — reframe existing bullets, never invent facts
-- Select up to 3 most relevant projects
-
-JOB:
-Title: ${job.title}
-Company: ${job.company}
-${description ? `Description:\n${description}` : ''}
-
-CANDIDATE (JSON):
-${JSON.stringify(profile, null, 2)}
-
-Return ONLY valid JSON with the exact same structure as the input.`
-      }],
+      messages: [{ role: 'user', content: promptContent }],
     });
 
     let text = response.content[0].text.trim();

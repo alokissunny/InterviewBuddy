@@ -50,20 +50,20 @@ export function JobCard({ job, profile }: JobCardProps) {
   };
 
   return (
-    <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl overflow-hidden hover:border-slate-600/70 transition-all duration-200">
-      <div className="p-4">
-        <div className="flex items-start gap-3">
-          {/* Company logo or fallback */}
-          <div className="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center shrink-0 overflow-hidden">
+    <div className="bg-slate-800/70 border border-slate-700/60 rounded-2xl shadow-lg shadow-black/10 hover:border-slate-600 hover:shadow-xl hover:shadow-black/20 transition-all duration-200">
+      <div className="p-5">
+        {/* Top row */}
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-xl bg-slate-700 border border-slate-600/50 flex items-center justify-center shrink-0 overflow-hidden">
             {job.companyLogo
-              ? <img src={job.companyLogo} alt={job.company} className="w-full h-full object-contain" />
-              : <Building2 size={18} className="text-slate-400" />
+              ? <img src={job.companyLogo} alt={job.company} className="w-full h-full object-contain p-1" />
+              : <Building2 size={20} className="text-slate-400" />
             }
           </div>
 
           <div className="flex-1 min-w-0">
-            <h3 className="text-slate-100 font-semibold text-sm leading-snug truncate">{job.title}</h3>
-            <p className="text-slate-400 text-xs mt-0.5 truncate">{job.company}</p>
+            <h3 className="text-white font-semibold text-base leading-snug">{job.title}</h3>
+            <p className="text-slate-400 text-sm mt-0.5">{job.company}</p>
           </div>
 
           {job.applyUrl && (
@@ -71,47 +71,44 @@ export function JobCard({ job, profile }: JobCardProps) {
               href={job.applyUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg transition-colors shrink-0"
+              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl shadow-md shadow-blue-500/20 transition-all shrink-0"
             >
-              Apply <ExternalLink size={11} />
+              Apply <ExternalLink size={13} />
             </a>
           )}
         </div>
 
         {/* Meta row */}
-        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3">
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-4">
           {job.location && (
-            <span className="flex items-center gap-1 text-xs text-slate-400">
-              <MapPin size={11} className="text-slate-500" />
-              {job.location}
+            <span className="flex items-center gap-1.5 text-sm text-slate-400">
+              <MapPin size={13} className="text-slate-500" /> {job.location}
             </span>
           )}
           {job.jobType && (
-            <span className="flex items-center gap-1 text-xs text-slate-400">
-              <Briefcase size={11} className="text-slate-500" />
-              {job.jobType}
+            <span className="flex items-center gap-1.5 text-sm text-slate-400">
+              <Briefcase size={13} className="text-slate-500" /> {job.jobType}
             </span>
           )}
           {job.postedAt && (
-            <span className="flex items-center gap-1 text-xs text-slate-500">
-              <Clock size={11} />
-              {job.postedAt}
+            <span className="flex items-center gap-1.5 text-sm text-slate-500">
+              <Clock size={13} /> {job.postedAt}
             </span>
           )}
           {job.salary && (
-            <span className="text-xs text-green-400 font-medium">{job.salary}</span>
+            <span className="text-sm text-green-400 font-semibold">{job.salary}</span>
           )}
         </div>
 
         {/* Tags */}
-        <div className="flex flex-wrap gap-1.5 mt-2">
+        <div className="flex flex-wrap gap-2 mt-3">
           {job.experienceLevel && (
-            <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">
+            <span className="text-xs font-medium bg-slate-700 text-slate-300 border border-slate-600/50 px-3 py-1 rounded-full">
               {job.experienceLevel}
             </span>
           )}
           {job.applicantsCount && (
-            <span className="text-xs text-slate-500 px-2 py-0.5">
+            <span className="text-xs text-slate-500 px-2 py-1">
               {job.applicantsCount} applicants
             </span>
           )}
@@ -122,34 +119,32 @@ export function JobCard({ job, profile }: JobCardProps) {
           <div className="mt-3">
             <button
               onClick={() => setExpanded(v => !v)}
-              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+              className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-300 transition-colors"
             >
-              {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               {expanded ? 'Hide details' : 'Show details'}
             </button>
             {expanded && (
-              <p className="mt-2 text-xs text-slate-400 leading-relaxed line-clamp-6 whitespace-pre-line">
-                {job.description.slice(0, 600)}{job.description.length > 600 ? '...' : ''}
+              <p className="mt-3 text-sm text-slate-400 leading-relaxed whitespace-pre-line">
+                {job.description.slice(0, 600)}{job.description.length > 600 ? '…' : ''}
               </p>
             )}
           </div>
         )}
 
         {/* Tailor Resume */}
-        <div className="mt-3 pt-3 border-t border-slate-700/50">
+        <div className="mt-4 pt-4 border-t border-slate-700/50">
           <button
             onClick={handleTailor}
             disabled={tailoring}
-            className="flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+            className="flex items-center gap-2 text-sm text-violet-400 hover:text-violet-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
           >
             {tailoring
-              ? <><Loader2 size={12} className="animate-spin" /> Tailoring resume...</>
-              : <><FileText size={12} /> Tailor resume for this role</>
+              ? <><Loader2 size={14} className="animate-spin" /> Tailoring resume…</>
+              : <><FileText size={14} /> Tailor resume for this role</>
             }
           </button>
-          {tailorError && (
-            <p className="text-xs text-red-400 mt-1">{tailorError}</p>
-          )}
+          {tailorError && <p className="text-sm text-red-400 mt-2">{tailorError}</p>}
         </div>
       </div>
     </div>

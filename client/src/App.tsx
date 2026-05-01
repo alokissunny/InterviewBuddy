@@ -24,32 +24,24 @@ function saveProfile(p: CandidateProfile) {
 }
 
 function TabBar({ active, onChange }: { active: MainTab; onChange: (t: MainTab) => void }) {
+  const tabs: { id: MainTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'interview', label: 'Interview', icon: <Mic size={14} /> },
+    { id: 'jobs',      label: 'Jobs',      icon: <Search size={14} /> },
+    { id: 'profile',   label: 'My Profile',icon: <User size={14} /> },
+  ];
   return (
-    <div className="flex items-center bg-slate-700/60 rounded-lg p-0.5 gap-0.5">
-      <button
-        onClick={() => onChange('interview')}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-          active === 'interview' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
-        }`}
-      >
-        <Mic size={12} /> Interview
-      </button>
-      <button
-        onClick={() => onChange('jobs')}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-          active === 'jobs' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
-        }`}
-      >
-        <Search size={12} /> Jobs
-      </button>
-      <button
-        onClick={() => onChange('profile')}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-          active === 'profile' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
-        }`}
-      >
-        <User size={12} /> My Profile
-      </button>
+    <div className="flex items-center bg-slate-900/60 rounded-xl p-1 gap-0.5 border border-slate-700/60">
+      {tabs.map(t => (
+        <button key={t.id} onClick={() => onChange(t.id)}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            active === t.id
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+          }`}
+        >
+          {t.icon} {t.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -104,13 +96,15 @@ export default function App() {
     <div className="h-screen flex flex-col overflow-hidden bg-slate-900">
       {/* Non-interview tabs get a standalone header */}
       {activeTab !== 'interview' && (
-        <header className="flex items-center justify-between px-4 py-3 bg-slate-800/80 border-b border-slate-700/50 shrink-0">
+        <header className="flex items-center justify-between px-6 py-4 bg-slate-800/90 border-b border-slate-700/60 shrink-0 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-              <Briefcase size={15} className="text-white" />
+            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+              <Briefcase size={17} className="text-white" />
             </div>
-            <span className="text-white font-semibold text-sm">Interview Copilot</span>
-            <span className="text-slate-500 text-xs">· {profile.name}</span>
+            <div>
+              <span className="text-white font-bold text-base">Interview Copilot</span>
+              <span className="text-slate-500 text-sm ml-2">· {profile.name}</span>
+            </div>
           </div>
           <TabBar active={activeTab} onChange={setActiveTab} />
         </header>
