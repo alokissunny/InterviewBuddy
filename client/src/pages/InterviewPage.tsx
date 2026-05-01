@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
   Mic, MicOff, RotateCcw, User, Briefcase, ChevronDown, ChevronUp,
-  Zap, Monitor, MonitorOff, AlertCircle, Info, Settings
+  Zap, Monitor, MonitorOff, AlertCircle, Info, Settings, Search
 } from 'lucide-react';
 import { CandidateProfile, TranscriptEntry } from '../types';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
@@ -20,9 +20,11 @@ interface InterviewPageProps {
   profile: CandidateProfile;
   onReset: () => void;
   onChangeProfile: () => void;
+  onTabChange: (tab: 'interview' | 'jobs') => void;
+  activeTab: 'interview' | 'jobs';
 }
 
-export function InterviewPage({ profile, onReset, onChangeProfile }: InterviewPageProps) {
+export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, activeTab }: InterviewPageProps) {
   const [autoAnalyze, setAutoAnalyze] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
   const [audioMode, setAudioMode] = useState<AudioMode>('system');
@@ -148,6 +150,26 @@ export function InterviewPage({ profile, onReset, onChangeProfile }: InterviewPa
           <div>
             <span className="text-white font-semibold text-sm">Interview Copilot</span>
             <span className="text-slate-500 text-xs ml-2">· {profile.name}</span>
+          </div>
+
+          {/* Tab switcher */}
+          <div className="flex items-center bg-slate-700/60 rounded-lg p-0.5 gap-0.5 ml-2">
+            <button
+              onClick={() => onTabChange('interview')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                activeTab === 'interview' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Mic size={12} /> Interview
+            </button>
+            <button
+              onClick={() => onTabChange('jobs')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                activeTab === 'jobs' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Search size={12} /> Jobs
+            </button>
           </div>
         </div>
 
