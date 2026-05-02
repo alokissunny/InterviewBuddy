@@ -219,7 +219,7 @@ const DATE_POSTED_MAP = { 'Past 24 hours': 'r86400', 'Past Week': 'r604800', 'Pa
 const PAGE_SIZE = 10;
 
 async function scrapeLinkedInJobs({ keywords, location, jobType, experienceLevel, datePosted, start = 0 }) {
-  const params = new URLSearchParams({ keywords, start: String(start), count: String(PAGE_SIZE) });
+  const params = new URLSearchParams({ keywords, start: String(start), count: String(PAGE_SIZE), sortBy: 'DD' });
   if (location) params.set('location', location);
   if (jobType && JOB_TYPE_MAP[jobType]) params.set('f_JT', JOB_TYPE_MAP[jobType]);
   if (experienceLevel && EXP_LEVEL_MAP[experienceLevel]) params.set('f_E', EXP_LEVEL_MAP[experienceLevel]);
@@ -249,11 +249,23 @@ async function scrapeLinkedInJobs({ keywords, location, jobType, experienceLevel
     const title = card.find('.base-search-card__title').text().trim();
     const company = card.find('.base-search-card__subtitle').text().trim();
     const location = card.find('.job-search-card__location').text().trim();
-    const postedAt = card.find('time').attr('datetime') || card.find('.job-search-card__listdate').text().trim() || '';
+    const timeEl = card.find('time');
+    const postedAtDate = timeEl.attr('datetime') || '';   // ISO date for sorting
+    const postedAt = timeEl.text().trim()
+      || card.find('.job-search-card__listdate').text().trim()
+      || postedAtDate;
     const applyUrl = card.find('a.base-card__full-link').attr('href') || '';
     const companyLogo = card.find('img.artdeco-entity-image').attr('data-delayed-url') || card.find('img').attr('src') || '';
 
-    if (title) jobs.push({ jobId, title, company, location, postedAt, applyUrl, companyLogo });
+    if (title) jobs.push({ jobId, title, company, location, postedAt, postedAtDate, applyUrl, companyLogo });
+  });
+
+  // Sort most recent first — ISO date strings sort correctly lexicographically
+  jobs.sort((a, b) => {
+    if (!a.postedAtDate && !b.postedAtDate) return 0;
+    if (!a.postedAtDate) return 1;
+    if (!b.postedAtDate) return -1;
+    return b.postedAtDate.localeCompare(a.postedAtDate);
   });
 
   return jobs;
