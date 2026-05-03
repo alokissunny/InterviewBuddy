@@ -796,53 +796,116 @@ app.get('/api/recruiters/search', async (req, res) => {
 });
 
 // ─── Mock Interview ───────────────────────────────────────────────────────────
+function estimateYearsOfExperience(experience) {
+  if (!experience || experience.length === 0) return 0;
+  let total = 0;
+  for (const exp of experience) {
+    const dur = (exp.duration || '').trim();
+    const rangeMatch = dur.match(/(\d{4})\s*[-–—]\s*(\d{4}|present|current|now)/i);
+    if (rangeMatch) {
+      const start = parseInt(rangeMatch[1]);
+      const end = /present|current|now/i.test(rangeMatch[2]) ? new Date().getFullYear() : parseInt(rangeMatch[2]);
+      total += Math.max(0, end - start);
+      continue;
+    }
+    const yearsMatch = dur.match(/(\d+)\+?\s*years?/i);
+    if (yearsMatch) { total += parseInt(yearsMatch[1]); continue; }
+    const monthsMatch = dur.match(/(\d+)\s*months?/i);
+    if (monthsMatch) { total += parseInt(monthsMatch[1]) / 12; continue; }
+    total += 1.5; // fallback: assume ~1.5 yrs per role
+  }
+  return Math.round(total);
+}
+
+function getSeniorityLevel(years) {
+  if (years <= 2)  return `Entry-level (~${years} yrs) — focus on fundamentals, learning speed, academic/side projects`;
+  if (years <= 5)  return `Mid-level (~${years} yrs) — focus on ownership, independent problem-solving, cross-functional work`;
+  if (years <= 9)  return `Senior (~${years} yrs) — focus on architecture decisions, trade-offs, mentoring, system design`;
+  if (years <= 14) return `Staff/Lead (~${years} yrs) — focus on org-wide impact, technical strategy, driving alignment`;
+  return           `Principal/Director (~${years} yrs) — focus on long-term vision, cross-org influence, build-vs-buy decisions`;
+}
+
 app.post('/api/mock-interview/questions', async (req, res) => {
   const { job, profile, count = 5 } = req.body;
   if (!job || !profile) return res.status(400).json({ error: 'job and profile are required' });
 
-  const jobCtx = [
-    `Title: ${job.title}`,
-    `Company: ${job.company}`,
-    job.description ? `Description: ${job.description.slice(0, 400)}` : '',
-    job.tags?.length ? `Tags/Skills: ${job.tags.join(', ')}` : '',
-    job.type ? `Type: ${job.type}` : '',
-  ].filter(Boolean).join('\n');
+  const years = estimateYearsOfExperience(profile.experience);
+  const seniority = getSeniorityLevel(years);
 
-  const profileCtx = [
-    `Title: ${profile.title}`,
-    `Skills: ${(profile.skills || []).slice(0, 12).join(', ')}`,
-    (profile.experience || []).slice(0, 3).map(e => `${e.role} at ${e.company}`).join(' | '),
-    profile.summary ? `Summary: ${profile.summary.slice(0, 150)}` : '',
-  ].filter(Boolean).join('\n');
+  const workHistory = (profile.experience || []).map(e => {
+    const highlights = (e.highlights || []).slice(0, 3).map(h => `    • ${h}`).join('\n');
+    return `  ${e.role} at ${e.company} (${e.duration || 'duration unknown'})${highlights ? '\n' + highlights : ''}`;
+  }).join('\n');
 
-  const prompt = `Generate exactly ${count} interview questions for a ${job.title} role at ${job.company}.
+  const projects = (profile.projects || []).map(p =>
+    `  ${p.name}: ${p.description}${p.technologies?.length ? ` [${p.technologies.join(', ')}]` : ''}`
+  ).join('\n');
 
-JOB:
-${jobCtx}
+  const prompt = `You are a senior interview coach preparing a real interview. Generate ${count} incisive, role-specific questions that will genuinely assess this candidate's fit.
 
-CANDIDATE:
-${profileCtx}
+━━ ROLE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Title: ${job.title}
+Company: ${job.company}
+${job.jobType ? `Type: ${job.jobType}` : ''}
+${job.tags?.length ? `Required skills: ${job.tags.join(', ')}` : ''}
+${job.description ? `\nJob Description:\n${job.description.slice(0, 900)}` : ''}
 
-Mix: 2 Behavioral (STAR), 2 Technical (job skills), 1 Situational or Motivation/Fit.
+━━ CANDIDATE ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Name: ${profile.name || 'Candidate'}
+Current title: ${profile.title}
+Seniority: ${seniority}
+Skills: ${(profile.skills || []).join(', ')}
+${profile.summary ? `\nSummary: ${profile.summary}` : ''}
 
-Return ONLY valid JSON, no markdown:
+Work history:
+${workHistory || '  (none provided)'}
+${projects ? `\nProjects:\n${projects}` : ''}
+${(profile.achievements || []).length ? `\nAchievements:\n${profile.achievements.map(a => `  • ${a}`).join('\n')}` : ''}
+${(profile.education || []).length ? `\nEducation:\n${profile.education.map(e => `  ${e.degree} — ${e.institution} (${e.year})`).join('\n')}` : ''}
+
+━━ INSTRUCTIONS ━━━━━━━━━━━━━━━━━━━━━━━━
+As an expert interview coach:
+
+1. ANALYSE the job description and extract the 3-5 most critical requirements.
+2. CROSS-REFERENCE against the candidate's experience:
+   - Gaps: things the JD requires that are absent or thin in their background
+   - Depth checks: skills they list but that need validation
+   - Strengths: strong matches worth confirming with a concrete example
+3. CALIBRATE difficulty to their seniority level (see above).
+4. DISTRIBUTE question types intelligently:
+   - Technical/Engineering role → 3 Technical, 1 Behavioral, 1 Situational
+   - Management/Leadership role → 2 Behavioral, 1 Situational, 1 Leadership, 1 Technical
+   - Mixed/Other → 2 Behavioral, 2 Technical, 1 Motivation or Fit
+5. MAKE QUESTIONS SPECIFIC — reference their actual companies, projects, or technologies when possible. Generic questions are not acceptable.
+6. Write a HINT that tells the candidate what a strong answer looks like, referencing the JD or their CV.
+
+Return ONLY valid JSON, no markdown fences:
 {
   "questions": [
-    { "id": "q1", "type": "Behavioral", "question": "...", "hint": "Use STAR format" },
-    { "id": "q2", "type": "Technical",  "question": "...", "hint": "..." }
+    {
+      "id": "q1",
+      "type": "Technical",
+      "question": "...",
+      "hint": "...",
+      "focus": "gap | validation | strength"
+    }
   ]
 }`;
 
   try {
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1200,
+      max_tokens: 3000,
       messages: [{ role: 'user', content: prompt }],
     });
     let text = response.content[0].text.trim();
-    if (text.startsWith('```')) text = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
-    const parsed = JSON.parse(text);
-    res.json({ questions: parsed.questions });
+    // Strip markdown fences if present
+    text = text.replace(/^```json?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    // Extract the outermost JSON object in case the model added preamble/postamble
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON object found in model response');
+    const parsed = JSON.parse(jsonMatch[0]);
+    res.json({ questions: parsed.questions, meta: { years, seniority } });
   } catch (err) {
     console.error('Mock interview questions error:', err.message);
     res.status(500).json({ error: err.message || 'Failed to generate questions' });
@@ -850,7 +913,7 @@ Return ONLY valid JSON, no markdown:
 });
 
 app.post('/api/mock-interview/feedback', async (req, res) => {
-  const { job, question, answer } = req.body;
+  const { job, question, answer, profile } = req.body;
   if (!job || !question || !answer) return res.status(400).json({ error: 'job, question, and answer are required' });
 
   res.setHeader('Content-Type', 'text/event-stream');
@@ -858,28 +921,36 @@ app.post('/api/mock-interview/feedback', async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
-  const prompt = `You are an expert interview coach. Give concise, actionable feedback.
+  const years = estimateYearsOfExperience(profile?.experience);
+  const seniority = getSeniorityLevel(years);
 
+  const prompt = `You are a senior interview coach giving real-time feedback. Be direct and actionable — no fluff.
+
+CONTEXT:
 Role: ${job.title} at ${job.company}
-Question type: ${question.type}
-Question: "${question.question}"
-Candidate's answer: "${answer.slice(0, 1200)}"
+Candidate seniority: ${seniority}
+${job.tags?.length ? `Key skills the role requires: ${job.tags.join(', ')}` : ''}
+${question.focus ? `This question probes a: ${question.focus === 'gap' ? 'SKILL GAP — be especially honest if the answer is weak' : question.focus === 'validation' ? 'CLAIMED SKILL — verify they truly have depth' : 'DEMONSTRATED STRENGTH — confirm with specifics'}` : ''}
 
-Respond in this exact format (keep bullets under 15 words each):
+QUESTION (${question.type}): "${question.question}"
+
+CANDIDATE'S ANSWER: "${answer.slice(0, 1500)}"
+
+Respond in this EXACT format (keep each bullet under 20 words):
 
 ## Score
-[X]/10 — [one short phrase]
+[X]/10 — [one sharp phrase summarising the answer quality]
 
 ## Strengths
-- [specific strength from their answer]
-- [another if applicable]
+- [what they did well — be specific, quote their words if strong]
+- [second strength if warranted]
 
 ## Improve
-- [most important gap]
+- [biggest gap — what a ${seniority.split('(')[0].trim()} interviewer would flag]
 - [second point if needed]
 
-## Key phrases to use
-[3-5 comma-separated keywords they should have mentioned]`;
+## Ideal answer would include
+[4-6 comma-separated concepts, keywords, or frameworks they should have mentioned for this role]`;
 
   try {
     const stream = anthropic.messages.stream({

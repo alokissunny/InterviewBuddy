@@ -9,9 +9,10 @@ import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 
 interface Question {
   id: string;
-  type: 'Behavioral' | 'Technical' | 'Situational' | 'Motivation/Fit';
+  type: 'Behavioral' | 'Technical' | 'Situational' | 'Motivation/Fit' | 'Leadership';
   question: string;
   hint: string;
+  focus?: 'gap' | 'validation' | 'strength';
 }
 
 interface AnswerRecord {
@@ -34,6 +35,7 @@ const TYPE_COLORS: Record<string, string> = {
   Technical:       'bg-purple-100 text-purple-700',
   Situational:     'bg-amber-100 text-amber-700',
   'Motivation/Fit':'bg-green-100 text-green-700',
+  Leadership:      'bg-rose-100 text-rose-700',
 };
 
 function parseScore(text: string): number | null {
@@ -137,7 +139,7 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
       const res = await fetch('/api/mock-interview/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job, question: questions[currentIdx], answer }),
+        body: JSON.stringify({ job, question: questions[currentIdx], answer, profile }),
       });
       if (!res.ok) throw new Error('Failed to get feedback');
 
