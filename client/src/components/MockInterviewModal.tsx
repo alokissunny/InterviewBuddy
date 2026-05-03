@@ -1,11 +1,14 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
-  X, Mic, MicOff, ChevronRight, RotateCcw,
-  CheckCircle2, Loader2, Building2,
+  X, MicOff, RotateCcw, CheckCircle2, Loader2,
+  Building2, Volume2, Mic,
 } from 'lucide-react';
 import { Job } from './JobCard';
 import { CandidateProfile } from '../types';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
+import { useTextToSpeech } from '../hooks/useTextToSpeech';
+
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 interface Question {
   id: string;
@@ -15,92 +18,208 @@ interface Question {
   focus?: 'gap' | 'validation' | 'strength';
 }
 
-interface AnswerRecord {
+interface Turn {
+  role: 'interviewer' | 'candidate';
+  text: string;
+}
+
+interface TopicRecord {
   question: Question;
-  answer: string;
+  conversation: Turn[];
   feedback: string;
   score: number | null;
 }
 
-type Stage = 'loading' | 'question' | 'submitting' | 'feedback' | 'complete';
+// loading → intro → asking → listening → thinking → followup_ask → feedback_speaking → complete
+type Stage =
+  | 'loading'
+  | 'intro'
+  | 'asking'        // TTS reading the (follow-up) question
+  | 'listening'     // mic live, user speaking
+  | 'thinking'      // fetching followup or feedback from server
+  | 'feedback_speaking' // TTS reading feedback, written panel visible
+  | 'complete';
 
-interface Props {
-  job: Job;
-  profile: CandidateProfile;
-  onClose: () => void;
-}
+interface Props { job: Job; profile: CandidateProfile; onClose: () => void; }
+
+// ── Constants ──────────────────────────────────────────────────────────────────
+
+const MAX_EXCHANGES = 2; // candidate answers per topic before feedback
 
 const TYPE_COLORS: Record<string, string> = {
-  Behavioral:      'bg-blue-100 text-blue-700',
-  Technical:       'bg-purple-100 text-purple-700',
-  Situational:     'bg-amber-100 text-amber-700',
-  'Motivation/Fit':'bg-green-100 text-green-700',
-  Leadership:      'bg-rose-100 text-rose-700',
+  Behavioral:       'bg-blue-500/20 text-blue-300 border-blue-500/30',
+  Technical:        'bg-violet-500/20 text-violet-300 border-violet-500/30',
+  Situational:      'bg-amber-500/20 text-amber-300 border-amber-500/30',
+  'Motivation/Fit': 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+  Leadership:       'bg-rose-500/20 text-rose-300 border-rose-500/30',
 };
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 function parseScore(text: string): number | null {
   const m = text.match(/##\s*Score\s*\n\s*(\d+)\s*\/\s*10/i);
   return m ? parseInt(m[1], 10) : null;
 }
 
-function scoreColor(s: number) {
-  return s >= 7 ? 'text-green-600' : s >= 5 ? 'text-amber-600' : 'text-red-500';
+function extractSpoken(text: string): string {
+  const m = text.match(/##\s*Spoken\s*\n([^\n#]+)/i);
+  return m ? m[1].trim() : '';
 }
 
-function FeedbackDisplay({ text, compact = false }: { text: string; compact?: boolean }) {
-  if (!text) return null;
-  const sp = compact ? 'space-y-0.5' : 'space-y-1';
+function scoreColor(s: number) {
+  return s >= 7 ? 'text-emerald-400' : s >= 5 ? 'text-amber-400' : 'text-red-400';
+}
+
+function scoreBg(s: number) {
+  return s >= 7
+    ? 'border-emerald-500/30 bg-emerald-500/10'
+    : s >= 5
+    ? 'border-amber-500/30 bg-amber-500/10'
+    : 'border-red-500/30 bg-red-500/10';
+}
+
+// ── Sub-components ─────────────────────────────────────────────────────────────
+
+function Waveform({ active }: { active: boolean }) {
   return (
-    <div className={sp}>
-      {text.split('\n').map((line, i) => {
-        if (line.startsWith('## ')) {
-          return (
-            <p key={i} className={`font-semibold text-gray-600 uppercase tracking-wide ${compact ? 'text-xs mt-2 first:mt-0' : 'text-xs mt-3 first:mt-0'}`}>
-              {line.slice(3)}
-            </p>
-          );
-        }
-        if (line.startsWith('- ')) {
-          return (
-            <p key={i} className={`text-gray-600 leading-relaxed ${compact ? 'text-xs' : 'text-sm'}`}>
-              · {line.slice(2)}
-            </p>
-          );
-        }
+    <div className="flex items-end gap-[3px] h-6">
+      {Array.from({ length: 10 }).map((_, i) => (
+        <div
+          key={i}
+          className={`w-1 rounded-full ${active ? 'bg-emerald-400' : 'bg-gray-600'}`}
+          style={{
+            height: active ? `${12 + Math.sin(i * 0.9) * 8}px` : '4px',
+            animation: active ? `wave ${0.5 + i * 0.07}s ease-in-out infinite alternate` : 'none',
+            animationDelay: `${i * 0.07}s`,
+          }}
+        />
+      ))}
+      <style>{`@keyframes wave { from { height: 4px } to { height: 22px } }`}</style>
+    </div>
+  );
+}
+
+function AvatarPulse({ speaking, logo, company }: { speaking: boolean; logo?: string; company: string }) {
+  return (
+    <div className="relative flex items-center justify-center w-14 h-14 shrink-0">
+      {speaking && (
+        <div className="absolute inset-0 rounded-full border-2 border-[#0A66C2]/50 animate-ping" />
+      )}
+      <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 overflow-hidden transition-colors
+        ${speaking ? 'border-[#0A66C2] bg-[#0A66C2]/10' : 'border-gray-600 bg-gray-800'}`}>
+        {logo
+          ? <img src={logo} alt={company} className="w-8 h-8 object-contain" />
+          : <Building2 size={20} className={speaking ? 'text-[#0A66C2]' : 'text-gray-500'} />}
+      </div>
+    </div>
+  );
+}
+
+function ChatBubble({ turn }: { turn: Turn }) {
+  const isInterviewer = turn.role === 'interviewer';
+  return (
+    <div className={`flex gap-2 ${isInterviewer ? 'justify-start' : 'justify-end'}`}>
+      <div className={`max-w-[82%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed
+        ${isInterviewer
+          ? 'bg-gray-700/80 text-gray-100 rounded-tl-sm'
+          : 'bg-[#0A66C2]/80 text-white rounded-tr-sm'}`}>
+        {turn.text}
+      </div>
+    </div>
+  );
+}
+
+function FeedbackPanel({ text }: { text: string }) {
+  const filtered = text.replace(/##\s*Spoken\s*\n[^\n#]+\n?/i, '').trim();
+  return (
+    <div className="space-y-2">
+      {filtered.split('\n').map((line, i) => {
+        if (line.startsWith('## '))
+          return <p key={i} className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-3 first:mt-0">{line.slice(3)}</p>;
+        if (line.startsWith('- '))
+          return <p key={i} className="text-sm text-gray-300 pl-2">· {line.slice(2)}</p>;
         if (!line.trim()) return null;
         const isScore = /^\d+\/10/.test(line.trim());
-        return (
-          <p key={i} className={`leading-relaxed ${compact ? 'text-xs' : 'text-sm'} ${isScore ? 'font-bold text-gray-900' : 'text-gray-600'}`}>
-            {line}
-          </p>
-        );
+        return <p key={i} className={`text-sm leading-relaxed ${isScore ? 'font-bold text-white text-base' : 'text-gray-300'}`}>{line}</p>;
       })}
     </div>
   );
 }
 
+// ── Main component ─────────────────────────────────────────────────────────────
+
 export function MockInterviewModal({ job, profile, onClose }: Props) {
   const [stage, setStage] = useState<Stage>('loading');
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [answer, setAnswer] = useState('');
-  const [feedback, setFeedback] = useState('');
-  const [records, setRecords] = useState<AnswerRecord[]>([]);
+  const [topicIdx, setTopicIdx] = useState(0);
+  const [conversation, setConversation] = useState<Turn[]>([]);
+  const [exchangeCount, setExchangeCount] = useState(0);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [records, setRecords] = useState<TopicRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [timer, setTimer] = useState(90);
+
   const feedbackRef = useRef('');
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Append each finalized speech segment to the answer
-  const onSpeechFinal = useCallback((text: string) => {
-    setAnswer(prev => prev ? `${prev} ${text}` : text);
-  }, []);
+  // ── Refs updated every render so async callbacks never read stale state ──────
+  // Root cause of the "not captured" bug: onSilence was memoized with [stage],
+  // but startListening() is called synchronously before React flushes setStage('listening'),
+  // so stage inside the closure was still 'asking' → guard failed → nothing submitted.
+  const stageRef = useRef<Stage>('loading');
+  stageRef.current = stage;                       // always current
 
-  const {
-    interimText,
-    isListening,
-    isSupported: micSupported,
-    startListening,
-    stopListening,
-  } = useSpeechRecognition(onSpeechFinal, 1200);
+  const handleAnswerRef = useRef<(text: string) => void>(() => {});
+  const accumulatedRef = useRef('');              // synced below after speech is declared
+
+  const tts = useTextToSpeech();
+
+  // Stable onSilence with zero deps — reads everything through refs
+  const onSilence = useCallback((_lastSegment: string) => {
+    if (stageRef.current !== 'listening') return;
+    // Use full accumulated text, fall back to last segment if recognition just started
+    const text = (accumulatedRef.current || _lastSegment).trim();
+    if (text) handleAnswerRef.current(text);
+  }, []); // intentionally no deps
+
+  const speech = useSpeechRecognition(onSilence, 2500);
+
+  // Keep accumulated answer ref current after every recognition event
+  accumulatedRef.current = speech.accumulatedText;
+
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [conversation, feedbackText]);
+
+  // ── Timer ────────────────────────────────────────────────────────────────────
+
+  const stopTimer = () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } };
+
+  const startTimer = () => {
+    stopTimer();
+    setTimer(90);
+    timerRef.current = setInterval(() => {
+      setTimer(t => {
+        if (t <= 1) {
+          stopTimer();
+          // Use refs — the interval closure would otherwise capture stale state
+          if (stageRef.current === 'listening') {
+            const ans = accumulatedRef.current.trim();
+            if (ans) handleAnswerRef.current(ans);
+          }
+          return 0;
+        }
+        return t - 1;
+      });
+    }, 1000);
+  };
+
+  useEffect(() => { if (stage !== 'listening') stopTimer(); }, [stage]);
+  useEffect(() => () => { stopTimer(); tts.stop(); speech.stopListening(); }, []); // eslint-disable-line
+
+  // ── Interview flow ───────────────────────────────────────────────────────────
 
   const loadQuestions = useCallback(async () => {
     setStage('loading');
@@ -114,38 +233,104 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to generate questions');
       setQuestions(data.questions);
-      setStage('question');
+      setTopicIdx(0);
+      setRecords([]);
+      startIntro(data.questions);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start interview');
-      setStage('question');
+      setError(err instanceof Error ? err.message : 'Failed to start');
+      setStage('intro');
     }
-  }, [job, profile]);
+  }, [job, profile]); // eslint-disable-line
 
   useEffect(() => { loadQuestions(); }, [loadQuestions]);
 
-  // Stop mic when moving away from the answer stage
-  useEffect(() => {
-    if (stage !== 'question' && isListening) stopListening();
-  }, [stage, isListening, stopListening]);
+  const startIntro = (qs: Question[]) => {
+    setStage('intro');
+    tts.speak(
+      `Hi, I'm Alex from ${job.company}. We'll go through ${qs.length} topics today. I'll ask follow-up questions as we go — just talk naturally.`,
+      () => askQuestion(qs, 0, [])
+    );
+  };
 
-  const submitAnswer = async () => {
-    if (!answer.trim() || !questions[currentIdx]) return;
-    if (isListening) stopListening();
-    setStage('submitting');
-    setFeedback('');
+  const askQuestion = (qs: Question[], idx: number, convo: Turn[]) => {
+    const q = qs[idx];
+    if (!q) return;
+    speech.clearEntries();
+    setFeedbackText('');
     feedbackRef.current = '';
+    setConversation(convo);
+    setExchangeCount(0);
+    setStage('asking');
+    const newConvo: Turn[] = [...convo, { role: 'interviewer', text: q.question }];
+    setConversation(newConvo);
+    tts.speak(q.question, () => beginListening());
+  };
 
+  const askFollowup = (convo: Turn[], followupText: string) => {
+    const newConvo: Turn[] = [...convo, { role: 'interviewer', text: followupText }];
+    setConversation(newConvo);
+    setStage('asking');
+    speech.clearEntries();
+    tts.speak(followupText, () => beginListening());
+  };
+
+  const beginListening = () => {
+    setStage('listening');
+    startTimer();
+    speech.startListening();
+  };
+
+  const handleCandidateAnswer = async (text: string) => {
+    if (!text.trim() || stageRef.current !== 'listening') return;
+    stopTimer();
+    speech.stopListening();
+    tts.stop();
+
+    const newConvo: Turn[] = [...conversation, { role: 'candidate', text: text.trim() }];
+    setConversation(newConvo);
+    const newCount = exchangeCount + 1;
+    setExchangeCount(newCount);
+    setStage('thinking');
+
+    if (newCount < MAX_EXCHANGES) {
+      await fetchFollowup(newConvo);
+    } else {
+      await fetchFeedback(newConvo);
+    }
+  };
+
+  // Keep ref pointing to latest version (non-memoized fn, recreated each render)
+  handleAnswerRef.current = handleCandidateAnswer;
+
+  const fetchFollowup = async (convo: Turn[]) => {
+    try {
+      const res = await fetch('/api/mock-interview/followup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job, profile, question: questions[topicIdx], conversation: convo }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to get follow-up');
+      askFollowup(convo, data.followup);
+    } catch (err) {
+      // On error skip to feedback
+      await fetchFeedback(convo);
+    }
+  };
+
+  const fetchFeedback = async (convo: Turn[]) => {
+    tts.speak('Let me think about that for a moment.');
     try {
       const res = await fetch('/api/mock-interview/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job, question: questions[currentIdx], answer, profile }),
+        body: JSON.stringify({ job, question: questions[topicIdx], conversation: convo, profile }),
       });
       if (!res.ok) throw new Error('Failed to get feedback');
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
-      setStage('feedback');
+      let full = '';
 
       while (true) {
         const { done, value } = await reader.read();
@@ -154,204 +339,222 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
           if (!line.startsWith('data: ')) continue;
           try {
             const parsed = JSON.parse(line.slice(6));
-            if (parsed.text) { feedbackRef.current += parsed.text; setFeedback(feedbackRef.current); }
+            if (parsed.text) { full += parsed.text; feedbackRef.current = full; setFeedbackText(full); }
             if (parsed.error) throw new Error(parsed.error);
-          } catch (e) {
-            if (e instanceof SyntaxError) continue;
-            throw e;
-          }
+          } catch (e) { if (e instanceof SyntaxError) continue; throw e; }
         }
       }
 
-      setRecords(prev => [...prev, {
-        question: questions[currentIdx],
-        answer,
-        feedback: feedbackRef.current,
-        score: parseScore(feedbackRef.current),
-      }]);
+      const score = parseScore(full);
+      setRecords(prev => [...prev, { question: questions[topicIdx], conversation: convo, feedback: full, score }]);
+
+      tts.stop();
+      setStage('feedback_speaking');
+      const spoken = extractSpoken(full);
+      if (spoken) tts.speak(spoken);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to get feedback');
-      setStage('question');
+      setStage('feedback_speaking');
     }
   };
 
-  const nextQuestion = () => {
-    if (currentIdx + 1 >= questions.length) {
+  const nextTopic = () => {
+    tts.stop();
+    const next = topicIdx + 1;
+    if (next >= questions.length) {
       setStage('complete');
+      tts.speak('Great work. You\'ve completed the interview. Here\'s your full summary.');
     } else {
-      setCurrentIdx(i => i + 1);
-      setAnswer('');
-      setFeedback('');
-      feedbackRef.current = '';
-      setStage('question');
+      setTopicIdx(next);
+      askQuestion(questions, next, []);
     }
   };
 
   const tryAgain = () => {
-    setCurrentIdx(0);
-    setAnswer('');
-    setFeedback('');
-    feedbackRef.current = '';
-    setRecords([]);
+    tts.stop();
+    speech.stopListening();
+    speech.clearEntries();
     loadQuestions();
   };
 
-  const avgScore = records.length > 0
-    ? Math.round(records.reduce((s, r) => s + (r.score ?? 7), 0) / records.length)
-    : null;
+  // ── Derived ──────────────────────────────────────────────────────────────────
 
-  const question = questions[currentIdx];
+  const question = questions[topicIdx];
+  const avgScore = records.length
+    ? Math.round(records.reduce((s, r) => s + (r.score ?? 6), 0) / records.length)
+    : null;
+  const liveText = [speech.accumulatedText, speech.interimText].filter(Boolean).join(' ');
+  const fmtTimer = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+
+  // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+      <div className="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-xl max-h-[92vh] flex flex-col overflow-hidden border border-gray-700/50">
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-[#EEF3F8] flex items-center justify-center shrink-0 overflow-hidden">
-              {job.companyLogo
-                ? <img src={job.companyLogo} alt="" className="w-full h-full object-contain p-1" />
-                : <Building2 size={16} className="text-[#0A66C2]" />}
-            </div>
-            <div className="min-w-0">
-              <p className="font-semibold text-gray-900 text-sm leading-tight truncate">{job.title}</p>
-              <p className="text-xs text-gray-400 truncate">{job.company} · Mock Interview</p>
+        {/* ── Header ── */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-700/60 shrink-0">
+          <AvatarPulse speaking={tts.isSpeaking} logo={job.companyLogo} company={job.company} />
+
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-white truncate">Alex · {job.company}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              {stage === 'loading' && <p className="text-xs text-gray-500">Preparing interview…</p>}
+              {(stage === 'intro' || stage === 'asking') && tts.isSpeaking && (
+                <p className="text-xs text-[#0A66C2] flex items-center gap-1"><Volume2 size={11} /> Speaking…</p>
+              )}
+              {stage === 'listening' && (
+                <p className="text-xs text-emerald-400 flex items-center gap-1"><Mic size={11} /> Listening</p>
+              )}
+              {stage === 'thinking' && (
+                <p className="text-xs text-gray-400 flex items-center gap-1"><Loader2 size={11} className="animate-spin" /> Thinking…</p>
+              )}
+              {stage === 'feedback_speaking' && tts.isSpeaking && (
+                <p className="text-xs text-amber-400 flex items-center gap-1"><Volume2 size={11} /> Feedback</p>
+              )}
+              {stage === 'feedback_speaking' && !tts.isSpeaking && (
+                <p className="text-xs text-gray-500">Review feedback below</p>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0 ml-4">
-            {stage !== 'loading' && stage !== 'complete' && questions.length > 0 && (
-              <>
-                <div className="flex items-center gap-1">
-                  {questions.map((_, i) => (
-                    <div key={i} className={`w-2 h-2 rounded-full transition-colors ${
-                      i < currentIdx ? 'bg-green-500' : i === currentIdx ? 'bg-[#0A66C2]' : 'bg-gray-200'
-                    }`} />
-                  ))}
-                </div>
-                <span className="text-xs text-gray-400 tabular-nums">{currentIdx + 1}/{questions.length}</span>
-              </>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Topic dots */}
+            {questions.length > 0 && stage !== 'loading' && stage !== 'complete' && (
+              <div className="flex gap-1">
+                {questions.map((_, i) => (
+                  <div key={i} className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                    i < topicIdx ? 'bg-emerald-500' : i === topicIdx ? 'bg-[#0A66C2]' : 'bg-gray-600'
+                  }`} />
+                ))}
+              </div>
             )}
-            <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-              <X size={18} />
+            {/* Question type badge */}
+            {question && stage !== 'loading' && stage !== 'complete' && (
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${TYPE_COLORS[question.type] || ''}`}>
+                {question.type}
+              </span>
+            )}
+            <button
+              onClick={() => { tts.stop(); speech.stopListening(); onClose(); }}
+              className="p-1.5 text-gray-500 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              <X size={16} />
             </button>
           </div>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* ── Body ── */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-0">
 
           {/* Loading */}
           {stage === 'loading' && (
-            <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <Loader2 size={32} className="text-[#0A66C2] animate-spin" />
-              <div className="text-center">
-                <p className="text-gray-700 font-medium">Preparing your interview…</p>
-                <p className="text-gray-400 text-sm mt-1">Generating questions tailored to {job.title}</p>
-              </div>
+            <div className="flex flex-col items-center justify-center h-60 gap-3">
+              <Loader2 size={30} className="text-[#0A66C2] animate-spin" />
+              <p className="text-gray-400 text-sm">Tailoring questions to the role…</p>
             </div>
           )}
 
-          {/* Error banner */}
+          {/* Error */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm text-center">
               {error}
             </div>
           )}
 
-          {/* Question + Answer + Feedback */}
-          {(stage === 'question' || stage === 'submitting' || stage === 'feedback') && question && (
-            <div className="space-y-5">
-              {/* Question card */}
-              <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${TYPE_COLORS[question.type] || 'bg-gray-100 text-gray-600'}`}>
-                    {question.type}
-                  </span>
-                  {question.hint && (
-                    <span className="text-xs text-gray-400 italic">{question.hint}</span>
-                  )}
-                </div>
-                <p className="text-gray-900 text-[15px] font-medium leading-snug">{question.question}</p>
+          {/* Chat conversation */}
+          {stage !== 'loading' && stage !== 'complete' && conversation.map((turn, i) => (
+            <ChatBubble key={i} turn={turn} />
+          ))}
+
+          {/* Asking — hint below the question bubble */}
+          {stage === 'asking' && (
+            <div className="flex items-center gap-2 text-xs text-gray-500 px-1">
+              <Volume2 size={11} className="text-[#0A66C2] shrink-0" />
+              Reading question… tap <span className="text-emerald-400 font-medium">Start Answering</span> when ready
+            </div>
+          )}
+
+          {/* ── Listening panel ─────────────────────────────────────────────── */}
+          {stage === 'listening' && (
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-3">
+              {/* Mic status row */}
+              <div className="flex items-center gap-2">
+                <div className={`w-2.5 h-2.5 rounded-full ${speech.isListening ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
+                <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
+                  {speech.isListening ? 'Listening — speak your answer' : 'Mic paused'}
+                </span>
+                <div className="ml-auto"><Waveform active={speech.isListening} /></div>
               </div>
 
-              {/* Answer input */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Your Answer</label>
-                  {micSupported && stage === 'question' && (
-                    <button
-                      onClick={() => isListening ? stopListening() : startListening()}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                        isListening ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                      }`}
-                    >
-                      {isListening ? <><MicOff size={12} /> Stop mic</> : <><Mic size={12} /> Use mic</>}
-                    </button>
-                  )}
-                </div>
-                <textarea
-                  value={answer}
-                  onChange={e => setAnswer(e.target.value)}
-                  disabled={stage !== 'question'}
-                  placeholder={stage === 'question' ? 'Type your answer, or use the mic to speak…' : ''}
-                  rows={5}
-                  className="w-full border border-gray-300 focus:border-[#0A66C2] rounded-xl px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 outline-none resize-none transition-colors disabled:bg-gray-50 disabled:text-gray-500"
-                />
-                {isListening && (
-                  <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse inline-block" />
-                    {interimText ? `"${interimText}"` : 'Listening…'}
-                  </p>
+              {/* Live transcript — always shown, placeholder when empty */}
+              <div className="min-h-[2.5rem] text-sm leading-relaxed">
+                {speech.accumulatedText && (
+                  <p className="text-white">{speech.accumulatedText}</p>
+                )}
+                {speech.interimText && (
+                  <p className="text-emerald-300 italic">{speech.interimText}…</p>
+                )}
+                {!speech.accumulatedText && !speech.interimText && (
+                  <p className="text-gray-600 italic">Your words will appear here as you speak…</p>
                 )}
               </div>
 
-              {/* Feedback */}
-              {(stage === 'submitting' || (stage === 'feedback' && feedback)) && (
-                <div className="border border-gray-200 rounded-xl overflow-hidden">
-                  <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Feedback</span>
-                    {stage === 'submitting' && <Loader2 size={12} className="text-gray-400 animate-spin" />}
-                  </div>
-                  <div className="px-4 py-4">
-                    <FeedbackDisplay text={feedback} />
-                  </div>
-                </div>
+              {/* Resume mic button if recognition stopped mid-session */}
+              {!speech.isListening && (
+                <button
+                  onClick={() => speech.startListening()}
+                  className="flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
+                >
+                  <Mic size={12} /> Tap to resume mic
+                </button>
               )}
             </div>
           )}
 
-          {/* Complete screen */}
+          {/* Feedback panel (shown after thinking, stays visible) */}
+          {(stage === 'feedback_speaking') && feedbackText && (
+            <div className="bg-gray-800/70 border border-gray-700/50 rounded-2xl p-4 mt-2">
+              <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3">Feedback</p>
+              <FeedbackPanel text={feedbackText} />
+            </div>
+          )}
+
+          {/* Scroll anchor */}
+          <div ref={chatEndRef} />
+
+          {/* Complete — all topic records */}
           {stage === 'complete' && (
-            <div className="space-y-5">
+            <div className="space-y-4">
               <div className="text-center py-2">
-                <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
-                  <CheckCircle2 size={28} className="text-green-600" />
+                <div className="w-14 h-14 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center mx-auto mb-2">
+                  <CheckCircle2 size={28} className="text-emerald-400" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">Interview Complete!</h3>
+                <h3 className="text-lg font-bold text-white">Interview Complete</h3>
                 {avgScore !== null && (
-                  <p className="text-gray-500 mt-1 text-sm">
-                    Average score: <span className={`font-bold ${scoreColor(avgScore)}`}>{avgScore}/10</span>
+                  <p className="text-gray-400 text-sm mt-0.5">
+                    Overall: <span className={`font-bold ${scoreColor(avgScore)}`}>{avgScore}/10</span>
                   </p>
                 )}
               </div>
 
               {records.map((r, i) => (
-                <div key={i} className="border border-gray-200 rounded-xl overflow-hidden">
-                  <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-2 min-w-0">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 mt-0.5 ${TYPE_COLORS[r.question.type] || 'bg-gray-100 text-gray-600'}`}>
+                <div key={i} className={`border rounded-2xl overflow-hidden ${r.score !== null ? scoreBg(r.score) : 'border-gray-700/50 bg-gray-800/60'}`}>
+                  {/* Conversation replay */}
+                  <div className="px-4 pt-3 pb-2 space-y-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${TYPE_COLORS[r.question.type] || ''}`}>
                         {r.question.type}
                       </span>
-                      <p className="text-sm text-gray-700 leading-snug">{r.question.question}</p>
+                      {r.score !== null && (
+                        <span className={`text-sm font-bold ml-auto ${scoreColor(r.score)}`}>{r.score}/10</span>
+                      )}
                     </div>
-                    {r.score !== null && (
-                      <span className={`text-sm font-bold shrink-0 ${scoreColor(r.score)}`}>{r.score}/10</span>
-                    )}
+                    {r.conversation.map((turn, j) => <ChatBubble key={j} turn={turn} />)}
                   </div>
-                  <div className="px-4 py-3">
-                    <FeedbackDisplay text={r.feedback} compact />
+                  {/* Feedback */}
+                  <div className="px-4 pb-4 pt-2 border-t border-gray-700/30">
+                    <FeedbackPanel text={r.feedback} />
                   </div>
                 </div>
               ))}
@@ -359,47 +562,75 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100 shrink-0 flex items-center justify-between bg-gray-50">
-          <button onClick={onClose} className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
-            {stage === 'complete' ? 'Close' : 'Exit interview'}
+        {/* ── Footer ── */}
+        <div className="px-4 py-3 border-t border-gray-700/60 shrink-0 flex items-center justify-between bg-gray-900">
+          <button
+            onClick={() => { tts.stop(); speech.stopListening(); onClose(); }}
+            className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
+          >
+            {stage === 'complete' ? 'Close' : 'Exit'}
           </button>
 
-          {stage === 'question' && (
-            <button
-              onClick={submitAnswer}
-              disabled={!answer.trim()}
-              className="flex items-center gap-2 px-6 py-2.5 bg-[#0A66C2] hover:bg-[#004182] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-all"
-            >
-              Submit Answer <ChevronRight size={15} />
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {/* Listening: timer + done button */}
+            {stage === 'listening' && (
+              <>
+                <span className={`text-sm font-mono tabular-nums ${timer <= 20 ? 'text-red-400' : 'text-gray-400'}`}>
+                  {fmtTimer(timer)}
+                </span>
+                <button
+                  onClick={() => {
+                    const ans = (speech.accumulatedText || speech.interimText).trim();
+                    if (ans) handleCandidateAnswer(ans);
+                  }}
+                  disabled={!speech.accumulatedText.trim() && !speech.interimText.trim()}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-[#0A66C2] hover:bg-[#004182] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-all"
+                >
+                  <MicOff size={13} /> Done
+                </button>
+              </>
+            )}
 
-          {stage === 'submitting' && (
-            <button disabled className="flex items-center gap-2 px-6 py-2.5 bg-[#0A66C2]/60 text-white text-sm font-semibold rounded-xl cursor-not-allowed">
-              <Loader2 size={15} className="animate-spin" /> Analyzing…
-            </button>
-          )}
+            {/* Asking — manual start in case TTS onend doesn't fire */}
+            {stage === 'asking' && (
+              <button
+                onClick={() => { tts.stop(); beginListening(); }}
+                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-xl transition-all"
+              >
+                <Mic size={13} /> Start Answering
+              </button>
+            )}
 
-          {stage === 'feedback' && (
-            <button
-              onClick={nextQuestion}
-              className="flex items-center gap-2 px-6 py-2.5 bg-[#0A66C2] hover:bg-[#004182] text-white text-sm font-semibold rounded-xl transition-all"
-            >
-              {currentIdx + 1 >= questions.length
-                ? <><CheckCircle2 size={15} /> Finish</>
-                : <>Next Question <ChevronRight size={15} /></>}
-            </button>
-          )}
+            {/* Thinking */}
+            {stage === 'thinking' && (
+              <div className="flex items-center gap-2 text-gray-400 text-sm">
+                <Loader2 size={14} className="animate-spin" />
+                {exchangeCount >= MAX_EXCHANGES ? 'Generating feedback…' : 'Generating follow-up…'}
+              </div>
+            )}
 
-          {stage === 'complete' && (
-            <button
-              onClick={tryAgain}
-              className="flex items-center gap-2 px-6 py-2.5 bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold rounded-xl transition-all"
-            >
-              <RotateCcw size={15} /> Try Again
-            </button>
-          )}
+            {/* Feedback — next topic */}
+            {stage === 'feedback_speaking' && (
+              <button
+                onClick={nextTopic}
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#0A66C2] hover:bg-[#004182] text-white text-sm font-semibold rounded-xl transition-all"
+              >
+                {topicIdx + 1 >= questions.length
+                  ? <><CheckCircle2 size={13} /> Finish</>
+                  : <>Next Topic ›</>}
+              </button>
+            )}
+
+            {/* Complete */}
+            {stage === 'complete' && (
+              <button
+                onClick={tryAgain}
+                className="flex items-center gap-1.5 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm font-semibold rounded-xl transition-all"
+              >
+                <RotateCcw size={13} /> Try Again
+              </button>
+            )}
+          </div>
         </div>
 
       </div>

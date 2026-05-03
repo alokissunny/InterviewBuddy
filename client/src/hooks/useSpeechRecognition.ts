@@ -7,6 +7,7 @@ type SpeechRecognitionType = any;
 interface UseSpeechRecognitionReturn {
   entries: TranscriptEntry[];
   interimText: string;
+  accumulatedText: string;
   isListening: boolean;
   isSupported: boolean;
   startListening: () => void;
@@ -108,6 +109,9 @@ export function useSpeechRecognition(
     setEntries(prev => prev.map(e => (e.id === id ? { ...e, text } : e)));
   }, []);
 
+  // Convenience: all finalised segments joined into one string
+  const accumulatedText = entries.map(e => e.text).join(' ').trim();
+
   useEffect(() => {
     return () => {
       recognitionRef.current?.stop();
@@ -118,6 +122,7 @@ export function useSpeechRecognition(
   return {
     entries,
     interimText,
+    accumulatedText,
     isListening,
     isSupported,
     startListening,

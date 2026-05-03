@@ -876,8 +876,13 @@ As an expert interview coach:
    - Technical/Engineering role → 3 Technical, 1 Behavioral, 1 Situational
    - Management/Leadership role → 2 Behavioral, 1 Situational, 1 Leadership, 1 Technical
    - Mixed/Other → 2 Behavioral, 2 Technical, 1 Motivation or Fit
-5. MAKE QUESTIONS SPECIFIC — reference their actual companies, projects, or technologies when possible. Generic questions are not acceptable.
-6. Write a HINT that tells the candidate what a strong answer looks like, referencing the JD or their CV.
+5. MAKE QUESTIONS SPECIFIC — reference their actual companies, projects, or technologies when possible.
+6. KEEP EACH QUESTION SHORT — under 20 words. These are conversation OPENERS, not monologue prompts.
+   ✗ Bad: "Tell me about a time you had to deal with a difficult stakeholder and how you resolved it using the STAR method."
+   ✓ Good: "How do you handle a stakeholder who keeps changing requirements mid-sprint?"
+   ✓ Good: "Walk me through a production incident you owned end to end."
+   The interviewer will ask natural follow-up questions based on the candidate's answers — do not try to cover everything in one question.
+7. Write a short HINT (under 12 words) — what angle a strong answer takes.
 
 Return ONLY valid JSON, no markdown fences:
 {
@@ -912,8 +917,52 @@ Return ONLY valid JSON, no markdown fences:
   }
 });
 
+app.post('/api/mock-interview/followup', async (req, res) => {
+  const { job, profile, question, conversation } = req.body;
+  if (!job || !conversation?.length) return res.status(400).json({ error: 'job and conversation are required' });
+
+  const years = estimateYearsOfExperience(profile?.experience);
+  const seniority = getSeniorityLevel(years);
+
+  const convoText = conversation
+    .map(t => `${t.role === 'interviewer' ? 'Interviewer' : 'Candidate'}: ${t.text}`)
+    .join('\n');
+
+  const prompt = `You are interviewing a ${seniority.split('(')[0].trim()} candidate for ${job.title} at ${job.company}.
+${question?.type ? `Topic area: ${question.type}` : ''}
+
+Conversation so far:
+${convoText}
+
+Ask ONE short follow-up question (under 20 words) that:
+- Probes the most interesting or underdeveloped point in their last answer
+- Digs for specifics: numbers, outcomes, decisions, conflicts, or lessons learned
+- Sounds like a real human interviewer, not a bot
+- Does NOT start with "That's great" or any affirmation
+- Does NOT repeat what they said back to them
+
+Return ONLY the question text — no quotes, no labels, nothing else.`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 120,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const followup = response.content[0].text.trim().replace(/^["']|["']$/g, '');
+    res.json({ followup });
+  } catch (err) {
+    console.error('Mock interview followup error:', err.message);
+    res.status(500).json({ error: err.message || 'Failed to generate follow-up' });
+  }
+});
+
 app.post('/api/mock-interview/feedback', async (req, res) => {
-  const { job, question, answer, profile } = req.body;
+  const { job, question, conversation, profile } = req.body;
+  // Support both old (answer string) and new (conversation array) callers
+  const answer = Array.isArray(conversation)
+    ? conversation.filter(t => t.role === 'candidate').map(t => t.text).join('\n\n')
+    : (req.body.answer || '');
   if (!job || !question || !answer) return res.status(400).json({ error: 'job, question, and answer are required' });
 
   res.setHeader('Content-Type', 'text/event-stream');
@@ -924,6 +973,10 @@ app.post('/api/mock-interview/feedback', async (req, res) => {
   const years = estimateYearsOfExperience(profile?.experience);
   const seniority = getSeniorityLevel(years);
 
+  const convoBlock = Array.isArray(conversation) && conversation.length > 1
+    ? `\nFULL CONVERSATION:\n${conversation.map(t => `${t.role === 'interviewer' ? 'Interviewer' : 'Candidate'}: ${t.text}`).join('\n')}`
+    : `\nCANDIDATE'S ANSWER: "${answer.slice(0, 1500)}"`;
+
   const prompt = `You are a senior interview coach giving real-time feedback. Be direct and actionable — no fluff.
 
 CONTEXT:
@@ -932,11 +985,13 @@ Candidate seniority: ${seniority}
 ${job.tags?.length ? `Key skills the role requires: ${job.tags.join(', ')}` : ''}
 ${question.focus ? `This question probes a: ${question.focus === 'gap' ? 'SKILL GAP — be especially honest if the answer is weak' : question.focus === 'validation' ? 'CLAIMED SKILL — verify they truly have depth' : 'DEMONSTRATED STRENGTH — confirm with specifics'}` : ''}
 
-QUESTION (${question.type}): "${question.question}"
-
-CANDIDATE'S ANSWER: "${answer.slice(0, 1500)}"
+OPENING QUESTION (${question.type}): "${question.question}"
+${convoBlock}
 
 Respond in this EXACT format (keep each bullet under 20 words):
+
+## Spoken
+[One natural sentence spoken aloud to the candidate: their score and single most important takeaway. Write it as if speaking — no markdown, no slashes, e.g. "Good effort, you scored 7 out of 10 — next time anchor your answer with a concrete metric."]
 
 ## Score
 [X]/10 — [one sharp phrase summarising the answer quality]
@@ -955,7 +1010,7 @@ Respond in this EXACT format (keep each bullet under 20 words):
   try {
     const stream = anthropic.messages.stream({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 500,
+      max_tokens: 700,
       messages: [{ role: 'user', content: prompt }],
     });
     stream.on('text', text => res.write(`data: ${JSON.stringify({ text })}\n\n`));
