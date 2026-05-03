@@ -795,8 +795,118 @@ app.get('/api/recruiters/search', async (req, res) => {
   }
 });
 
+// ─── Mock Interview ───────────────────────────────────────────────────────────
+app.post('/api/mock-interview/questions', async (req, res) => {
+  const { job, profile, count = 5 } = req.body;
+  if (!job || !profile) return res.status(400).json({ error: 'job and profile are required' });
+
+  const jobCtx = [
+    `Title: ${job.title}`,
+    `Company: ${job.company}`,
+    job.description ? `Description: ${job.description.slice(0, 400)}` : '',
+    job.tags?.length ? `Tags/Skills: ${job.tags.join(', ')}` : '',
+    job.type ? `Type: ${job.type}` : '',
+  ].filter(Boolean).join('\n');
+
+  const profileCtx = [
+    `Title: ${profile.title}`,
+    `Skills: ${(profile.skills || []).slice(0, 12).join(', ')}`,
+    (profile.experience || []).slice(0, 3).map(e => `${e.role} at ${e.company}`).join(' | '),
+    profile.summary ? `Summary: ${profile.summary.slice(0, 150)}` : '',
+  ].filter(Boolean).join('\n');
+
+  const prompt = `Generate exactly ${count} interview questions for a ${job.title} role at ${job.company}.
+
+JOB:
+${jobCtx}
+
+CANDIDATE:
+${profileCtx}
+
+Mix: 2 Behavioral (STAR), 2 Technical (job skills), 1 Situational or Motivation/Fit.
+
+Return ONLY valid JSON, no markdown:
+{
+  "questions": [
+    { "id": "q1", "type": "Behavioral", "question": "...", "hint": "Use STAR format" },
+    { "id": "q2", "type": "Technical",  "question": "...", "hint": "..." }
+  ]
+}`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1200,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    let text = response.content[0].text.trim();
+    if (text.startsWith('```')) text = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
+    const parsed = JSON.parse(text);
+    res.json({ questions: parsed.questions });
+  } catch (err) {
+    console.error('Mock interview questions error:', err.message);
+    res.status(500).json({ error: err.message || 'Failed to generate questions' });
+  }
+});
+
+app.post('/api/mock-interview/feedback', async (req, res) => {
+  const { job, question, answer } = req.body;
+  if (!job || !question || !answer) return res.status(400).json({ error: 'job, question, and answer are required' });
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const prompt = `You are an expert interview coach. Give concise, actionable feedback.
+
+Role: ${job.title} at ${job.company}
+Question type: ${question.type}
+Question: "${question.question}"
+Candidate's answer: "${answer.slice(0, 1200)}"
+
+Respond in this exact format (keep bullets under 15 words each):
+
+## Score
+[X]/10 — [one short phrase]
+
+## Strengths
+- [specific strength from their answer]
+- [another if applicable]
+
+## Improve
+- [most important gap]
+- [second point if needed]
+
+## Key phrases to use
+[3-5 comma-separated keywords they should have mentioned]`;
+
+  try {
+    const stream = anthropic.messages.stream({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 500,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    stream.on('text', text => res.write(`data: ${JSON.stringify({ text })}\n\n`));
+    stream.on('finalMessage', () => { res.write(`data: ${JSON.stringify({ done: true })}\n\n`); res.end(); });
+    stream.on('error', err => { res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`); res.end(); });
+  } catch (err) {
+    res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
+    res.end();
+  }
+});
+
+// ─── Serve React client in production ────────────────────────────────────────
+if (process.env.NODE_ENV === 'production') {
+  const distPath = path.join(__dirname, '../client/dist');
+  app.use(express.static(distPath));
+  // SPA fallback — all non-API routes return index.html
+  app.get('*', (req, res) => res.sendFile(path.join(distPath, 'index.html')));
+}
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`\nInterview Copilot server on port ${PORT}`);
   console.log(`Whisper: ${process.env.OPENAI_API_KEY ? 'server key configured' : 'client must provide key'}`);
+  console.log(`Env: ${process.env.NODE_ENV || 'development'}`);
 });

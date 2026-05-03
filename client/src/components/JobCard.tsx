@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { MapPin, Building2, Clock, ExternalLink, ChevronDown, ChevronUp, Briefcase, FileText, Loader2 } from 'lucide-react';
+import { MapPin, Building2, Clock, ExternalLink, ChevronDown, ChevronUp, Briefcase, FileText, Loader2, Zap } from 'lucide-react';
 import { CandidateProfile } from '../types';
+import { MockInterviewModal } from './MockInterviewModal';
 
 export interface Job {
   id?: string;
@@ -31,6 +32,7 @@ export function JobCard({ job, profile }: JobCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [tailoring, setTailoring] = useState(false);
   const [tailorError, setTailorError] = useState<string | null>(null);
+  const [showMockInterview, setShowMockInterview] = useState(false);
 
   const handleTailor = async () => {
     setTailoring(true);
@@ -163,8 +165,8 @@ export function JobCard({ job, profile }: JobCardProps) {
           </div>
         )}
 
-        {/* Tailor Resume */}
-        <div className="mt-4 pt-4 border-t border-gray-200">
+        {/* Actions */}
+        <div className="mt-4 pt-4 border-t border-gray-200 flex items-center gap-5 flex-wrap">
           <button
             onClick={handleTailor}
             disabled={tailoring}
@@ -172,12 +174,27 @@ export function JobCard({ job, profile }: JobCardProps) {
           >
             {tailoring
               ? <><Loader2 size={14} className="animate-spin" /> Tailoring resume…</>
-              : <><FileText size={14} /> Tailor resume for this role</>
+              : <><FileText size={14} /> Tailor resume</>
             }
           </button>
-          {tailorError && <p className="text-sm text-red-500 mt-2">{tailorError}</p>}
+
+          <button
+            onClick={() => setShowMockInterview(true)}
+            className="flex items-center gap-2 text-sm text-[#0A66C2] hover:text-[#004182] transition-colors font-medium"
+          >
+            <Zap size={14} /> Mock Interview
+          </button>
         </div>
+        {tailorError && <p className="text-sm text-red-500 mt-2 px-5 pb-3">{tailorError}</p>}
       </div>
+
+      {showMockInterview && (
+        <MockInterviewModal
+          job={job}
+          profile={profile}
+          onClose={() => setShowMockInterview(false)}
+        />
+      )}
     </div>
   );
 }

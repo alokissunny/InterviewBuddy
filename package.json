@@ -6,7 +6,8 @@
     "dev": "node -e \"const {execSync}=require('child_process');try{execSync('lsof -ti:3001|xargs kill -9',{stdio:'ignore'})}catch(e){}\" && concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "cd server && npm run dev",
     "dev:client": "cd client && npm run dev",
-    "build": "cd client && npm run build",
+    "build": "cd server && npm install && cd ../client && npm install && npm run build",
+    "start": "node server/index.js",
     "install:all": "npm install && cd server && npm install && cd ../client && npm install"
   },
   "devDependencies": {
