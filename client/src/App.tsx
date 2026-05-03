@@ -52,9 +52,29 @@ export default function App() {
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
   const [page, setPage] = useState<'setup' | 'main'>('setup');
   const [activeTab, setActiveTab] = useState<MainTab>('interview');
-  const [startOnUpload, setStartOnUpload] = useState(false);
+  const [linkedinError, setLinkedinError] = useState<string | null>(null);
+  const [linkedinProfile, setLinkedinProfile] = useState<CandidateProfile | null>(null);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const lp = params.get('lp');
+    const liError = params.get('linkedin_error');
+
+    if (lp) {
+      try {
+        const decoded = JSON.parse(atob(lp)) as CandidateProfile;
+        // Show the LinkedIn profile card for confirmation instead of auto-proceeding
+        setLinkedinProfile(decoded);
+      } catch { /* malformed */ }
+      window.history.replaceState({}, '', window.location.pathname);
+      return;
+    }
+
+    if (liError) {
+      setLinkedinError(decodeURIComponent(liError));
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
     const saved = loadSavedProfile();
     if (saved) {
       setProfile(saved);
@@ -65,17 +85,14 @@ export default function App() {
   const handleProfileReady = (p: CandidateProfile) => {
     saveProfile(p);
     setProfile(p);
-    setStartOnUpload(false);
     setPage('main');
   };
 
   const handleReset = () => {
     setPage('setup');
-    setStartOnUpload(false);
   };
 
   const handleChangeProfile = () => {
-    setStartOnUpload(true);
     setPage('setup');
   };
 
@@ -89,7 +106,11 @@ export default function App() {
       <SetupPage
         onProfileReady={handleProfileReady}
         savedProfile={loadSavedProfile()}
-        startOnUpload={startOnUpload}
+        linkedinError={linkedinError}
+        onClearLinkedinError={() => setLinkedinError(null)}
+        linkedinProfile={linkedinProfile}
+        onLinkedinProfileAccept={(p) => { setLinkedinProfile(null); handleProfileReady(p); }}
+        onLinkedinProfileDismiss={() => setLinkedinProfile(null)}
       />
     );
   }

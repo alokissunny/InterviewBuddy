@@ -81,8 +81,10 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
     <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-5 flex-1 min-w-0">
-          <div className="w-16 h-16 rounded-2xl bg-[#EEF3F8] border border-[#0A66C2]/30 flex items-center justify-center shrink-0">
-            <User size={28} className="text-[#0A66C2]" />
+          <div className="w-16 h-16 rounded-2xl bg-[#EEF3F8] border border-[#0A66C2]/30 flex items-center justify-center shrink-0 overflow-hidden">
+            {profile.photoUrl
+              ? <img src={profile.photoUrl} alt={profile.name} className="w-full h-full object-cover" />
+              : <User size={28} className="text-[#0A66C2]" />}
           </div>
           {isHeader ? (
             <div className="flex-1 space-y-2.5">

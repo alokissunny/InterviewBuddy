@@ -23,6 +23,8 @@ export interface CandidateProfile {
   email?: string;
   phone?: string;
   summary: string;
+  photoUrl?: string;
+  profileUrl?: string;
   skills: string[];
   experience: Experience[];
   education: Education[];

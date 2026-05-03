@@ -30,6 +30,96 @@ function getOpenAIClient(req) {
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// ─── LinkedIn OAuth ───────────────────────────────────────────────────────────
+const oauthStates = new Map();
+
+app.get('/auth/linkedin', (req, res) => {
+  const clientId = process.env.LINKEDIN_CLIENT_ID;
+  if (!clientId) {
+    return res.status(500).send('LinkedIn OAuth not configured. Add LINKEDIN_CLIENT_ID and LINKEDIN_CLIENT_SECRET to server/.env');
+  }
+  const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  oauthStates.set(state, Date.now());
+  // Prune states older than 10 min
+  for (const [s, ts] of oauthStates) if (Date.now() - ts > 600_000) oauthStates.delete(s);
+
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: clientId,
+    redirect_uri: process.env.LINKEDIN_REDIRECT_URI || 'http://localhost:3001/auth/linkedin/callback',
+    scope: 'openid profile email',
+    state,
+  });
+  res.redirect(`https://www.linkedin.com/oauth/v2/authorization?${params}`);
+});
+
+app.get('/auth/linkedin/callback', async (req, res) => {
+  const { code, state, error, error_description } = req.query;
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+  if (error) {
+    return res.redirect(`${frontendUrl}?linkedin_error=${encodeURIComponent(error_description || error)}`);
+  }
+  if (!oauthStates.has(state)) {
+    return res.redirect(`${frontendUrl}?linkedin_error=${encodeURIComponent('Invalid or expired OAuth state. Please try again.')}`);
+  }
+  oauthStates.delete(state);
+
+  try {
+    const redirectUri = process.env.LINKEDIN_REDIRECT_URI || 'http://localhost:3001/auth/linkedin/callback';
+
+    // Exchange code for access token
+    const tokenRes = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: redirectUri,
+        client_id: process.env.LINKEDIN_CLIENT_ID,
+        client_secret: process.env.LINKEDIN_CLIENT_SECRET,
+      }),
+    });
+    const tokenData = await tokenRes.json();
+    if (!tokenData.access_token) throw new Error(tokenData.error_description || 'Failed to get access token');
+    const accessToken = tokenData.access_token;
+
+    // Fetch name/email/photo via OpenID Connect userinfo endpoint
+    // Note: /v2/me requires r_liteprofile scope (not available with openid/profile/email scopes),
+    // so vanityName cannot be fetched here — user provides LinkedIn URL in the UI for Apify enrichment
+    const userinfoRes = await fetch('https://api.linkedin.com/v2/userinfo', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const userinfo = await userinfoRes.json();
+
+    const name = userinfo.name || `${userinfo.given_name || ''} ${userinfo.family_name || ''}`.trim();
+
+    console.log('[LinkedIn OAuth] userinfo keys:', Object.keys(userinfo).join(', '));
+    console.log('[LinkedIn OAuth] name:', name, '| email:', userinfo.email, '| picture:', userinfo.picture ? 'yes' : 'no');
+
+    const profile = {
+      name,
+      title: '',
+      email: userinfo.email || '',
+      phone: '',
+      summary: '',
+      photoUrl: userinfo.picture || '',
+      profileUrl: '',
+      skills: [],
+      experience: [],
+      education: [],
+      projects: [],
+      achievements: [],
+    };
+
+    const encoded = Buffer.from(JSON.stringify(profile)).toString('base64');
+    res.redirect(`${frontendUrl}?lp=${encoded}`);
+  } catch (err) {
+    console.error('LinkedIn OAuth error:', err.message);
+    res.redirect(`${frontendUrl}?linkedin_error=${encodeURIComponent(err.message)}`);
+  }
+});
+
 // ─── CV Upload ───────────────────────────────────────────────────────────────
 app.post('/api/cv/upload', upload.single('cv'), async (req, res) => {
   try {
@@ -286,6 +376,146 @@ app.post('/api/jobs/search', async (req, res) => {
   } catch (err) {
     console.error('Jobs search error:', err.message);
     res.status(500).json({ error: err.message || 'Failed to fetch jobs' });
+  }
+});
+
+// ─── LinkedIn Profile Enrichment (Apify) ─────────────────────────────────────
+
+// dev_fusion/linkedin-profile-scraper field reference:
+//   experience items: jobTitle, companyName, jobStartedOn, jobStillWorking, currentJobDuration
+//   skills: unknown — logged on first run so we can confirm
+//   education: unknown — logged on first run so we can confirm
+
+function formatApifyDate(d) {
+  if (!d) return '';
+  if (typeof d === 'string') return d;
+  if (typeof d === 'object') {
+    const m = d.month ? String(d.month).padStart(2, '0') : '';
+    const y = d.year || '';
+    return m && y ? `${y}-${m}` : String(y);
+  }
+  return String(d);
+}
+
+async function enrichProfileWithApify(profileUrl) {
+  const apiToken = process.env.APIFY_API_TOKEN;
+  if (!apiToken || !profileUrl) {
+    console.log('[Apify] Skipping — missing token or profileUrl');
+    return null;
+  }
+
+  const actorId = 'dev_fusion~linkedin-profile-scraper';
+  const apiUrl = `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?token=${apiToken}&timeout=120`;
+
+  console.log('\n[Apify] ═══════════════════════════════════════════');
+  console.log('[Apify] Actor  :', actorId);
+  console.log('[Apify] Profile:', profileUrl);
+  console.log('[Apify] URL    :', apiUrl);
+
+  const runRes = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ profileUrls: [profileUrl] }),
+  });
+
+  console.log('[Apify] HTTP status:', runRes.status, runRes.statusText);
+
+  if (!runRes.ok) {
+    const errText = await runRes.text().catch(() => '');
+    console.error('[Apify] Error body:', errText.slice(0, 600));
+    throw new Error(`Apify ${runRes.status}: ${errText.slice(0, 200)}`);
+  }
+
+  const items = await runRes.json();
+  console.log('[Apify] Items received:', Array.isArray(items) ? items.length : typeof items);
+
+  const raw = Array.isArray(items) ? items[0] : items;
+  if (!raw) {
+    console.log('[Apify] No items in response — profile may be private or actor returned empty dataset');
+    return null;
+  }
+
+  console.log('[Apify] Top-level keys:', Object.keys(raw).join(', '));
+  console.log('[Apify] Full raw response:\n', JSON.stringify(raw, null, 2));
+  console.log('[Apify] ═══════════════════════════════════════════\n');
+
+  // ── Skills ──
+  // dev_fusion returns skills as array of strings or {name} objects; handle both
+  const rawSkills = raw.skills || raw.topSkills || [];
+  const skills = rawSkills
+    .map(s => (typeof s === 'string' ? s : s.name || s.title || ''))
+    .filter(Boolean);
+  console.log(`[Apify] Skills (${skills.length}):`, skills.slice(0, 6).join(', '));
+
+  // ── Experience ──
+  // dev_fusion: jobTitle, companyName, jobStartedOn, jobStillWorking, currentJobDuration
+  const rawExp = raw.experience || raw.experiences || raw.positions || raw.jobs || [];
+  const experience = rawExp.map(e => {
+    const role    = e.jobTitle    || e.title    || e.role    || '';
+    const company = e.companyName || e.company  || e.organization || '';
+    const start   = formatApifyDate(e.jobStartedOn  || e.startDate || e.start);
+    const end     = e.jobStillWorking ? 'Present' : formatApifyDate(e.jobEndedOn || e.endDate || e.end) || 'Present';
+    const duration = e.currentJobDuration || e.dateRange || (start ? `${start} – ${end}` : '');
+    const descRaw  = e.description || e.jobDescription || '';
+    const highlights = descRaw
+      ? descRaw.split(/\n|•|·/).map(s => s.trim()).filter(s => s.length > 15).slice(0, 3)
+      : [];
+    return { company, role, duration, highlights };
+  }).filter(e => e.company || e.role);
+  console.log(`[Apify] Experience (${experience.length}):`, experience.map(e => `${e.role} @ ${e.company}`).join(' | '));
+
+  // ── Education ──
+  // dev_fusion: schoolName (or degreeName), fieldOfStudy, startedOn, endedOn
+  const rawEdu = raw.education || raw.educations || [];
+  const education = rawEdu.map(e => {
+    const institution = e.schoolName || e.school || e.institutionName || '';
+    const degreeParts = [e.degreeName || e.degree, e.fieldOfStudy].filter(Boolean);
+    const degree = degreeParts.join(', ') || '';
+    const year   = formatApifyDate(e.endedOn || e.endDate || e.end) || formatApifyDate(e.startedOn || e.startDate || e.start) || '';
+    return { institution, degree, year };
+  }).filter(e => e.institution);
+  console.log(`[Apify] Education (${education.length}):`, education.map(e => `${e.degree} @ ${e.institution}`).join(' | '));
+
+  // ── Projects ──
+  const rawProj = raw.projects || raw.publications || [];
+  const projects = rawProj.map(p => ({
+    name: p.title || p.name || '',
+    description: (p.description || '').slice(0, 120),
+    technologies: p.technologies || [],
+  })).filter(p => p.name);
+
+  // ── Achievements ──
+  const rawAch = [...(raw.honors || raw.honorsAndAwards || []), ...(raw.certifications || [])];
+  const achievements = rawAch
+    .map(a => a.title || a.name || (typeof a === 'string' ? a : ''))
+    .filter(Boolean)
+    .slice(0, 6);
+
+  // ── Summary / Photo ──
+  const summary  = raw.summary || raw.about || raw.description || '';
+  const photoUrl = raw.profilePicture || raw.profilePictureUrl || raw.imgUrl || raw.photo || '';
+
+  const result = { skills, experience, education, projects, achievements, summary, photoUrl };
+  console.log('[Apify] Mapped result — skills:', skills.length, '| exp:', experience.length, '| edu:', education.length);
+
+  return result;
+}
+
+app.post('/api/profile/enrich', async (req, res) => {
+  const { profileUrl } = req.body;
+  console.log('[Apify] /api/profile/enrich called with profileUrl:', profileUrl);
+
+  if (!profileUrl) return res.status(400).json({ error: 'profileUrl is required' });
+  if (!process.env.APIFY_API_TOKEN) return res.status(503).json({ error: 'Apify token not configured' });
+
+  try {
+    const enriched = await enrichProfileWithApify(profileUrl);
+    if (!enriched) return res.status(404).json({ error: 'No profile data returned — profile may be private or not found' });
+    console.log('[Apify] Sending enriched profile to client');
+    res.json({ enriched });
+  } catch (err) {
+    console.error('[Apify] Enrichment error:', err.message);
+    res.status(500).json({ error: err.message || 'Failed to enrich profile' });
   }
 });
 
