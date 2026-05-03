@@ -1,9 +1,8 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
-  Mic, MicOff, RotateCcw, User, Briefcase, ChevronDown, ChevronUp,
-  Zap, Monitor, MonitorOff, AlertCircle, Info, Settings, Search, Users
+  Mic, MicOff, RotateCcw, User, ChevronDown, ChevronUp,
+  Zap, Monitor, MonitorOff, AlertCircle, Info, Settings, LogOut,
 } from 'lucide-react';
-import { MainTab } from '../App';
 import { CandidateProfile, TranscriptEntry } from '../types';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useSystemAudioCapture } from '../hooks/useSystemAudioCapture';
@@ -21,11 +20,9 @@ interface InterviewPageProps {
   profile: CandidateProfile;
   onReset: () => void;
   onChangeProfile: () => void;
-  onTabChange: (tab: MainTab) => void;
-  activeTab: MainTab;
 }
 
-export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, activeTab }: InterviewPageProps) {
+export function InterviewPage({ profile, onReset, onChangeProfile }: InterviewPageProps) {
   const [autoAnalyze, setAutoAnalyze] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
   const [audioMode, setAudioMode] = useState<AudioMode>('system');
@@ -141,76 +138,62 @@ export function InterviewPage({ profile, onReset, onChangeProfile, onTabChange, 
   };
 
   return (
-    <div className="h-screen bg-[#F3F2EF] flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 shrink-0 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#0A66C2] flex items-center justify-center shadow-lg shadow-[#0A66C2]/30">
-              <Briefcase size={17} className="text-white" />
-            </div>
-            <div>
-              <span className="text-gray-900 font-bold text-base">Interview Copilot</span>
-              <span className="text-gray-400 text-sm ml-2">· {profile.name}</span>
-            </div>
-          </div>
-
-          {/* Tab switcher */}
-          <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5 border border-gray-200 ml-1">
-            {([['interview', <Mic size={14} />, 'Interview'], ['jobs', <Search size={14} />, 'Jobs'], ['connections', <Users size={14} />, 'Connections'], ['profile', <User size={14} />, 'My Profile']] as const).map(([tab, icon, label]) => (
-              <button key={tab} onClick={() => onTabChange(tab as MainTab)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  activeTab === tab ? 'bg-[#0A66C2] text-white shadow-md shadow-[#0A66C2]/30' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
-                }`}
-              >
-                {icon} {label}
-              </button>
-            ))}
-          </div>
+    <div className="h-full bg-[#F3F2EF] flex flex-col overflow-hidden">
+      {/* Session sub-toolbar */}
+      <div className="flex items-center justify-between px-5 py-2 bg-white border-b border-gray-100 shrink-0">
+        {/* Left: live status */}
+        <div className="flex items-center gap-3">
+          <AudioIndicator isListening={isActive} isAnalyzing={isAnalyzing || sysTranscribing} mode={audioMode} />
+          <div className="w-px h-4 bg-gray-200" />
+          <span className="font-mono text-xs text-gray-400 tabular-nums">{elapsed}</span>
         </div>
 
-        <div className="flex items-center gap-4">
-          <AudioIndicator isListening={isActive} isAnalyzing={isAnalyzing || sysTranscribing} mode={audioMode} />
-          <div className="h-5 w-px bg-gray-200" />
-          <span className="font-mono text-gray-700 text-xs">{elapsed}</span>
-          <div className="h-5 w-px bg-gray-200" />
-
-          <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none">
+        {/* Right: controls */}
+        <div className="flex items-center gap-1">
+          {/* Auto-analyze toggle */}
+          <label className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:bg-gray-50 cursor-pointer select-none transition-colors">
             <div
               onClick={() => setAutoAnalyze(v => !v)}
-              className={`w-8 h-4 rounded-full transition-colors relative ${autoAnalyze ? 'bg-[#0A66C2]' : 'bg-gray-200'}`}
+              className={`w-7 h-3.5 rounded-full transition-colors relative shrink-0 ${autoAnalyze ? 'bg-[#0A66C2]' : 'bg-gray-200'}`}
             >
-              <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${autoAnalyze ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              <div className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white shadow transition-transform ${autoAnalyze ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
             </div>
             Auto-analyze
           </label>
 
+          <div className="w-px h-4 bg-gray-100" />
+
+          {/* Profile drawer */}
           <button
             onClick={() => setShowProfile(v => !v)}
-            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 transition-colors"
-          >
-            <User size={14} />
-            Profile
-            {showProfile ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-          </button>
-
-          <button
-            onClick={onChangeProfile}
-            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 transition-colors"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              showProfile ? 'bg-[#EEF3F8] text-[#0A66C2]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
+            }`}
           >
             <User size={13} />
-            Change Profile
+            Profile
+            {showProfile ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
           </button>
 
+          {/* Change profile */}
+          <button
+            onClick={onChangeProfile}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-colors"
+          >
+            <LogOut size={13} />
+            Switch Profile
+          </button>
+
+          {/* Reset session */}
           <button
             onClick={onReset}
-            className="flex items-center gap-1 text-xs text-gray-500 hover:text-red-500 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:bg-red-50 hover:text-red-500 transition-colors"
           >
             <RotateCcw size={13} />
             Reset
           </button>
         </div>
-      </header>
+      </div>
 
       {/* Profile dropdown */}
       {showProfile && (
