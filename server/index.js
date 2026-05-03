@@ -988,24 +988,30 @@ ${question.focus ? `This question probes a: ${question.focus === 'gap' ? 'SKILL 
 OPENING QUESTION (${question.type}): "${question.question}"
 ${convoBlock}
 
-Respond in this EXACT format (keep each bullet under 20 words):
+RULES FOR YOUR FEEDBACK:
+- Quote the candidate's EXACT words when citing strengths or weaknesses (e.g. "when you said '...'")
+- Every bullet must reference something they actually said — no generic advice
+- Improvements must be specific to THIS role (${job.title} at ${job.company}) and THIS answer
+- If they didn't mention a key requirement from the JD, name it explicitly
+
+Respond in this EXACT format:
 
 ## Spoken
-[One natural sentence spoken aloud to the candidate: their score and single most important takeaway. Write it as if speaking — no markdown, no slashes, e.g. "Good effort, you scored 7 out of 10 — next time anchor your answer with a concrete metric."]
+[One sentence spoken aloud: score + the single most role-specific takeaway. Sound human, e.g. "Solid answer, 7 out of 10 — you described the system well but never mentioned how you handled failure cases, which is critical for this role."]
 
 ## Score
-[X]/10 — [one sharp phrase summarising the answer quality]
+[X]/10 — [one sharp phrase tied to the role requirements]
 
 ## Strengths
-- [what they did well — be specific, quote their words if strong]
-- [second strength if warranted]
+- [quote their words, explain why it landed well for this role]
+- [second strength if present]
 
 ## Improve
-- [biggest gap — what a ${seniority.split('(')[0].trim()} interviewer would flag]
-- [second point if needed]
+- [name the specific gap — what a hiring manager at ${job.company} would want to hear that was missing]
+- [second point referencing their actual answer]
 
 ## Ideal answer would include
-[4-6 comma-separated concepts, keywords, or frameworks they should have mentioned for this role]`;
+[4-6 specific concepts, tools, or frameworks a strong ${seniority.split('(')[0].trim()} candidate would mention for ${job.title}]`;
 
   try {
     const stream = anthropic.messages.stream({

@@ -157,7 +157,8 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
   const [feedbackText, setFeedbackText] = useState('');
   const [records, setRecords] = useState<TopicRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [timer, setTimer] = useState(90);
+  const [timer, setTimer] = useState(120);
+  const [editableTranscript, setEditableTranscript] = useState(''); // user-editable STT text
 
   const feedbackRef = useRef('');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -183,10 +184,17 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
     if (text) handleAnswerRef.current(text);
   }, []); // intentionally no deps
 
-  const speech = useSpeechRecognition(onSilence, 2500);
+  // 5 s silence + require 8 words minimum before auto-submit
+  const speech = useSpeechRecognition(onSilence, 5000, 8);
 
-  // Keep accumulated answer ref current after every recognition event
+  // Keep refs current every render
   accumulatedRef.current = speech.accumulatedText;
+
+  // Sync editable transcript from STT (only when user hasn't manually edited)
+  const userEditedRef = useRef(false);
+  useEffect(() => {
+    if (!userEditedRef.current) setEditableTranscript(speech.accumulatedText);
+  }, [speech.accumulatedText]);
 
   // Auto-scroll chat to bottom
   useEffect(() => {
@@ -195,11 +203,26 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
 
   // ── Timer ────────────────────────────────────────────────────────────────────
 
+  const playBeep = () => {
+    try {
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.18);
+    } catch { /* AudioContext not available */ }
+  };
+
   const stopTimer = () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } };
 
   const startTimer = () => {
     stopTimer();
-    setTimer(90);
+    setTimer(120);
     timerRef.current = setInterval(() => {
       setTimer(t => {
         if (t <= 1) {
@@ -275,16 +298,30 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
   };
 
   const beginListening = () => {
+    userEditedRef.current = false;
+    setEditableTranscript('');
     setStage('listening');
     startTimer();
     speech.startListening();
   };
 
-  const handleCandidateAnswer = async (text: string) => {
-    if (!text.trim() || stageRef.current !== 'listening') return;
+  // Play beep the moment the mic is confirmed ready — tells user to start speaking
+  const prevMicReadyRef = useRef(false);
+  useEffect(() => {
+    if (speech.isMicReady && !prevMicReadyRef.current && stage === 'listening') {
+      playBeep();
+    }
+    prevMicReadyRef.current = speech.isMicReady;
+  }, [speech.isMicReady, stage]);
+
+  const handleCandidateAnswer = async (rawText: string) => {
+    // Prefer the user-edited transcript if they've touched it; otherwise use STT text
+    const text = (userEditedRef.current ? editableTranscript : rawText || editableTranscript).trim();
+    if (!text || stageRef.current !== 'listening') return;
     stopTimer();
     speech.stopListening();
     tts.stop();
+    userEditedRef.current = false;
 
     const newConvo: Turn[] = [...conversation, { role: 'candidate', text: text.trim() }];
     setConversation(newConvo);
@@ -477,38 +514,52 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
 
           {/* ── Listening panel ─────────────────────────────────────────────── */}
           {stage === 'listening' && (
-            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-3">
-              {/* Mic status row */}
+            <div className={`rounded-2xl border p-4 space-y-3 transition-colors ${
+              speech.isMicReady
+                ? 'border-emerald-500/40 bg-emerald-500/5'
+                : 'border-gray-600/40 bg-gray-800/40'
+            }`}>
+              {/* Status row */}
               <div className="flex items-center gap-2">
-                <div className={`w-2.5 h-2.5 rounded-full ${speech.isListening ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
-                <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                  {speech.isListening ? 'Listening — speak your answer' : 'Mic paused'}
-                </span>
-                <div className="ml-auto"><Waveform active={speech.isListening} /></div>
+                {speech.isMicReady ? (
+                  <>
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                    <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Listening</span>
+                  </>
+                ) : (
+                  <>
+                    <Loader2 size={12} className="text-gray-400 animate-spin shrink-0" />
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      Warming up mic… wait for beep
+                    </span>
+                  </>
+                )}
+                <div className="ml-auto flex items-center gap-3">
+                  {speech.isMicReady && <Waveform active={speech.isListening} />}
+                </div>
               </div>
 
-              {/* Live transcript — always shown, placeholder when empty */}
-              <div className="min-h-[2.5rem] text-sm leading-relaxed">
-                {speech.accumulatedText && (
-                  <p className="text-white">{speech.accumulatedText}</p>
-                )}
-                {speech.interimText && (
-                  <p className="text-emerald-300 italic">{speech.interimText}…</p>
-                )}
-                {!speech.accumulatedText && !speech.interimText && (
-                  <p className="text-gray-600 italic">Your words will appear here as you speak…</p>
-                )}
+              {/* Editable transcript — STT output user can correct before submitting */}
+              <div className="space-y-1">
+                <textarea
+                  value={editableTranscript + (speech.interimText ? ` ${speech.interimText}` : '')}
+                  onChange={e => {
+                    userEditedRef.current = true;
+                    setEditableTranscript(e.target.value);
+                  }}
+                  placeholder={speech.isMicReady ? 'Your words will appear here — you can edit before submitting…' : ''}
+                  rows={4}
+                  className="w-full bg-transparent text-sm text-white placeholder:text-gray-600 resize-none outline-none leading-relaxed"
+                />
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-gray-600">
+                    {editableTranscript.trim().split(/\s+/).filter(Boolean).length} words · edit to fix errors
+                  </span>
+                  {speech.interimText && (
+                    <span className="text-[10px] text-emerald-500 italic">capturing…</span>
+                  )}
+                </div>
               </div>
-
-              {/* Resume mic button if recognition stopped mid-session */}
-              {!speech.isListening && (
-                <button
-                  onClick={() => speech.startListening()}
-                  className="flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
-                >
-                  <Mic size={12} /> Tap to resume mic
-                </button>
-              )}
             </div>
           )}
 
@@ -575,15 +626,12 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
             {/* Listening: timer + done button */}
             {stage === 'listening' && (
               <>
-                <span className={`text-sm font-mono tabular-nums ${timer <= 20 ? 'text-red-400' : 'text-gray-400'}`}>
+                <span className={`text-sm font-mono tabular-nums ${timer <= 30 ? 'text-red-400' : 'text-gray-400'}`}>
                   {fmtTimer(timer)}
                 </span>
                 <button
-                  onClick={() => {
-                    const ans = (speech.accumulatedText || speech.interimText).trim();
-                    if (ans) handleCandidateAnswer(ans);
-                  }}
-                  disabled={!speech.accumulatedText.trim() && !speech.interimText.trim()}
+                  onClick={() => handleCandidateAnswer(editableTranscript || speech.accumulatedText)}
+                  disabled={!editableTranscript.trim() && !speech.accumulatedText.trim() && !speech.interimText.trim()}
                   className="flex items-center gap-1.5 px-4 py-2 bg-[#0A66C2] hover:bg-[#004182] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-all"
                 >
                   <MicOff size={13} /> Done

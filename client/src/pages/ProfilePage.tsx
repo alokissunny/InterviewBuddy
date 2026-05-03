@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   User, Mail, Phone, Briefcase, GraduationCap, FolderOpen, Star, Code,
-  RefreshCw, Pencil, Check, X, Plus, Trash2,
+  RefreshCw, Pencil, Check, X, Plus, Trash2, Upload, FileText, Loader2, AlertCircle,
 } from 'lucide-react';
 import { CandidateProfile, Experience, Education, Project } from '../types';
 
@@ -44,6 +44,119 @@ function Section({
         )}
       </div>
       {children}
+    </div>
+  );
+}
+
+type UploadState = 'idle' | 'dragging' | 'uploading' | 'success' | 'error';
+
+function CVUploadCard({ onUpdate }: { onUpdate: (p: CandidateProfile) => void }) {
+  const [uploadState, setUploadState] = useState<UploadState>('idle');
+  const [message, setMessage] = useState('');
+  const [fileName, setFileName] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = useCallback(async (file: File) => {
+    if (!file) return;
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!['pdf', 'txt', 'doc', 'docx'].includes(ext || '')) {
+      setUploadState('error');
+      setMessage('Please upload a PDF, TXT, or Word document.');
+      return;
+    }
+    setFileName(file.name);
+    setUploadState('uploading');
+    setMessage('');
+    try {
+      const form = new FormData();
+      form.append('cv', file);
+      const res = await fetch('/api/cv/upload', { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+      onUpdate(data.profile);
+      setUploadState('success');
+      setMessage('Profile updated from your CV.');
+    } catch (err) {
+      setUploadState('error');
+      setMessage(err instanceof Error ? err.message : 'Upload failed. Please try again.');
+    }
+  }, [onUpdate]);
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setUploadState('idle');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  }, [handleFile]);
+
+  const isDragging = uploadState === 'dragging';
+  const isUploading = uploadState === 'uploading';
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <div className="flex items-center gap-2.5 mb-4">
+        <Upload size={16} className="text-[#0A66C2]" />
+        <h2 className="text-gray-900 font-semibold text-base">Upload CV</h2>
+      </div>
+
+      <div
+        onDragOver={e => { e.preventDefault(); setUploadState('dragging'); }}
+        onDragLeave={() => setUploadState('idle')}
+        onDrop={onDrop}
+        onClick={() => !isUploading && inputRef.current?.click()}
+        className={`relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-10 cursor-pointer transition-all
+          ${isDragging ? 'border-[#0A66C2] bg-[#EEF3F8]' : 'border-gray-300 hover:border-[#0A66C2] hover:bg-gray-50'}
+          ${isUploading ? 'pointer-events-none opacity-70' : ''}
+        `}
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".pdf,.txt,.doc,.docx"
+          className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }}
+        />
+
+        {isUploading ? (
+          <>
+            <Loader2 size={32} className="text-[#0A66C2] animate-spin" />
+            <div className="text-center">
+              <p className="text-sm font-medium text-gray-700">Parsing {fileName}…</p>
+              <p className="text-xs text-gray-400 mt-1">Extracting your experience, skills & education</p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="w-12 h-12 rounded-xl bg-[#EEF3F8] flex items-center justify-center">
+              <FileText size={22} className="text-[#0A66C2]" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-gray-700">
+                {isDragging ? 'Drop your CV here' : 'Drag & drop your CV, or click to browse'}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">PDF, Word, or TXT · up to 25 MB</p>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Status message */}
+      {uploadState === 'success' && (
+        <div className="mt-3 flex items-center gap-2 text-sm text-green-600 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
+          <Check size={15} className="shrink-0" />
+          {message}
+        </div>
+      )}
+      {uploadState === 'error' && (
+        <div className="mt-3 flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
+          <AlertCircle size={15} className="shrink-0" />
+          {message}
+        </div>
+      )}
+
+      <p className="text-xs text-gray-400 mt-3 text-center">
+        Uploading will overwrite your current profile data with what's in the CV.
+      </p>
     </div>
   );
 }
@@ -133,10 +246,6 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
               <Pencil size={13} /> Edit
             </button>
           )}
-          <button onClick={onChangeProfile}
-            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 border border-gray-300 hover:border-gray-400 rounded-lg px-3 py-2 transition-all">
-            <RefreshCw size={13} /> Update CV
-          </button>
         </div>
       </div>
 
@@ -383,6 +492,7 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
     <div className="h-full overflow-y-auto bg-[#F3F2EF]">
       <div className="max-w-2xl mx-auto px-5 py-7 space-y-5">
         {headerSection}
+        <CVUploadCard onUpdate={onUpdate} />
         {profile.skills?.length > 0 || editingSection === 'skills' ? skillsSection : null}
         {profile.experience?.length > 0 || editingSection === 'experience' ? expSection : null}
         {profile.projects?.length > 0 || editingSection === 'projects' ? projSection : null}
