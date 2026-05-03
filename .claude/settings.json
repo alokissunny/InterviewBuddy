@@ -4,7 +4,10 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(node -e \"require\\('./jobs/aggregator'\\)\")",
       "Bash(node -e \"require\\('./index'\\)\")",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ]
   }
 }
