@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Loader2, AlertCircle, Briefcase, MapPin, SlidersHorizontal, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Search, Loader2, AlertCircle, Briefcase, MapPin, SlidersHorizontal, RefreshCw, Wifi } from 'lucide-react';
 import { CandidateProfile } from '../types';
 import { JobCard, Job } from '../components/JobCard';
 
@@ -21,20 +21,35 @@ const JOB_TYPES = ['', 'full-time', 'part-time', 'contract', 'internship'];
 const EXP_LEVELS = ['', 'internship', 'entry-level', 'associate', 'mid-senior', 'director', 'executive'];
 const DATE_OPTIONS = ['', 'Past 24 hours', 'Past Week', 'Past Month'];
 
-function normaliseJob(raw: Record<string, any>): Job {
+const ALL_SOURCES = ['linkedin', 'remotive', 'arbeitnow', 'remoteok'] as const;
+type Source = typeof ALL_SOURCES[number];
+
+const SOURCE_META: Record<Source, { label: string; color: string; dot: string }> = {
+  linkedin:  { label: 'LinkedIn',  color: 'bg-[#EEF3F8] text-[#0A66C2] border-[#bfd5ed]', dot: 'bg-[#0A66C2]' },
+  remotive:  { label: 'Remotive',  color: 'bg-green-50 text-green-700 border-green-200',   dot: 'bg-green-500' },
+  arbeitnow: { label: 'Arbeitnow', color: 'bg-orange-50 text-orange-700 border-orange-200', dot: 'bg-orange-500' },
+  remoteok:  { label: 'RemoteOK',  color: 'bg-purple-50 text-purple-700 border-purple-200', dot: 'bg-purple-500' },
+};
+
+function normaliseJob(raw: Record<string, unknown>): Job {
   return {
-    id: raw.id || raw.jobId || String(Math.random()),
-    title: raw.title || raw.jobTitle || 'Untitled',
-    company: raw.company || raw.companyName || '',
-    location: raw.location || raw.jobLocation || '',
-    jobType: raw.jobType || raw.employmentType || '',
-    experienceLevel: raw.experienceLevel || raw.seniorityLevel || '',
-    postedAt: raw.postedAt || raw.publishedAt || raw.timeAgo || '',
-    description: raw.description || raw.jobDescription || '',
-    applyUrl: raw.applyUrl || raw.jobUrl || raw.url || '',
-    companyLogo: raw.companyLogo || raw.logo || '',
-    salary: raw.salary || raw.salaryRange || '',
+    id: String(raw.id || raw.jobId || Math.random()),
+    source: String(raw.source || ''),
+    sourceLabel: String(raw.sourceLabel || ''),
+    title: String(raw.title || raw.jobTitle || 'Untitled'),
+    company: String(raw.company || raw.companyName || ''),
+    location: String(raw.location || raw.jobLocation || ''),
+    remote: Boolean(raw.remote),
+    jobType: String(raw.jobType || raw.type || raw.employmentType || ''),
+    experienceLevel: String(raw.experienceLevel || raw.seniorityLevel || ''),
+    postedAt: String(raw.postedAt || raw.publishedAt || raw.timeAgo || ''),
+    description: String(raw.description || raw.jobDescription || ''),
+    applyUrl: String(raw.applyUrl || raw.jobUrl || raw.url || ''),
+    companyLogo: String(raw.companyLogo || raw.logo || ''),
+    salary: String(raw.salary || raw.salaryRange || ''),
     applicantsCount: raw.applicantsCount ? String(raw.applicantsCount) : raw.applicants ? String(raw.applicants) : '',
+    tags: Array.isArray(raw.tags) ? raw.tags.map(String) : [],
+    matchScore: typeof raw.matchScore === 'number' ? raw.matchScore : undefined,
   };
 }
 
@@ -49,13 +64,16 @@ export function JobsPage({ profile }: JobsPageProps) {
     return { keywords: profile.title || '', location: '', jobType: '', experienceLevel: '', datePosted: 'Past Week' };
   });
 
+  const [activeSources, setActiveSources] = useState<Source[]>([...ALL_SOURCES]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
   const [hasMore, setHasMore] = useState(false);
-  const [start, setStart] = useState(0);
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [sourceStats, setSourceStats] = useState<Record<string, number>>({});
 
   const updatePref = (key: keyof SearchPrefs, value: string) => {
     setPrefs(p => {
@@ -65,24 +83,40 @@ export function JobsPage({ profile }: JobsPageProps) {
     });
   };
 
-  const fetchJobs = async (startOffset: number, append: boolean) => {
+  const toggleSource = (source: Source) => {
+    setActiveSources(prev =>
+      prev.includes(source)
+        ? prev.length > 1 ? prev.filter(s => s !== source) : prev
+        : [...prev, source]
+    );
+  };
+
+  // Always fetch all sources from server; chips filter client-side for instant feedback
+  const fetchJobs = async (pageNum: number, append: boolean) => {
     if (!prefs.keywords.trim()) return;
     append ? setIsLoadingMore(true) : setIsLoading(true);
     setError(null);
-    if (!append) { setJobs([]); setSearched(true); }
+    if (!append) { setJobs([]); setSearched(true); setPage(0); }
 
     try {
       const res = await fetch('/api/jobs/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...prefs, start: startOffset }),
+        body: JSON.stringify({ ...prefs, page: pageNum }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
       const newJobs = (data.jobs || []).map(normaliseJob);
-      setJobs(prev => append ? [...prev, ...newJobs] : newJobs);
-      setHasMore(data.hasMore ?? false);
-      setStart(startOffset + newJobs.length);
+      setJobs(prev => {
+        if (!append) return newJobs;
+        const seen = new Set(prev.map((j: Job) => j.id));
+        return [...prev, ...newJobs.filter((j: Job) => !seen.has(j.id))];
+      });
+      // On Load More: hide button only when 0 new jobs come back (truly exhausted)
+      setHasMore(append ? newJobs.length > 0 : (data.hasMore ?? newJobs.length > 0));
+      setTotal(data.total ?? newJobs.length);
+      setSourceStats(data.sourceStats ?? {});
+      setPage(pageNum);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed');
     } finally {
@@ -92,7 +126,19 @@ export function JobsPage({ profile }: JobsPageProps) {
   };
 
   const search = () => fetchJobs(0, false);
-  const loadMore = () => fetchJobs(start, true);
+  const loadMore = () => fetchJobs(page + 1, true);
+
+  // Client-side filter — chips take effect instantly without a new server request
+  const displayedJobs = jobs.filter(j => !j.source || activeSources.includes(j.source as Source));
+
+  // Counts per source from the actual (deduped) jobs array — more accurate than server sourceStats
+  const jobCountBySource = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const job of jobs) {
+      if (job.source) counts[job.source] = (counts[job.source] || 0) + 1;
+    }
+    return counts;
+  }, [jobs]);
 
   useEffect(() => {
     if (prefs.keywords.trim()) fetchJobs(0, false);
@@ -164,6 +210,33 @@ export function JobsPage({ profile }: JobsPageProps) {
             </button>
           </div>
         </div>
+
+        {/* Source chips */}
+        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+          <span className="text-xs text-gray-400 font-medium flex items-center gap-1 mr-1">
+            <Wifi size={11} /> Sources:
+          </span>
+          {ALL_SOURCES.map(source => {
+            const meta = SOURCE_META[source];
+            const active = activeSources.includes(source);
+            const count = sourceStats[source];
+            return (
+              <button
+                key={source}
+                onClick={() => toggleSource(source)}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-all ${
+                  active ? meta.color : 'bg-gray-50 text-gray-400 border-gray-200'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${active ? meta.dot : 'bg-gray-300'}`} />
+                {meta.label}
+                {searched && jobCountBySource[source] !== undefined && (
+                  <span className="opacity-60">({jobCountBySource[source]})</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Results */}
@@ -181,8 +254,8 @@ export function JobsPage({ profile }: JobsPageProps) {
               <Loader2 size={28} className="text-[#0A66C2] animate-spin" />
             </div>
             <div className="text-center">
-              <p className="text-gray-700 font-medium">Scraping LinkedIn jobs…</p>
-              <p className="text-gray-400 text-sm mt-1">This takes a few seconds</p>
+              <p className="text-gray-700 font-medium">Searching {activeSources.length} sources…</p>
+              <p className="text-gray-400 text-sm mt-1">LinkedIn · Remotive · Arbeitnow · RemoteOK</p>
             </div>
           </div>
         )}
@@ -196,9 +269,21 @@ export function JobsPage({ profile }: JobsPageProps) {
               <p className="text-gray-500 font-medium">No jobs found</p>
               <p className="text-gray-400 text-sm mt-1">Try broader keywords or a different location</p>
             </div>
-            <button onClick={search} className="btn-ghost mt-1">
+            <button onClick={search} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mt-1">
               <RefreshCw size={14} /> Retry
             </button>
+          </div>
+        )}
+
+        {!isLoading && searched && jobs.length > 0 && displayedJobs.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-24 gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">
+              <Wifi size={28} className="text-gray-300" />
+            </div>
+            <div className="text-center">
+              <p className="text-gray-500 font-medium">All sources hidden</p>
+              <p className="text-gray-400 text-sm mt-1">Enable at least one source above to see results</p>
+            </div>
           </div>
         )}
 
@@ -209,25 +294,31 @@ export function JobsPage({ profile }: JobsPageProps) {
             </div>
             <div className="text-center">
               <p className="text-gray-500 font-medium">Ready to search</p>
-              <p className="text-gray-400 text-sm mt-1">Keywords pre-filled from your CV profile</p>
+              <p className="text-gray-400 text-sm mt-1">Keywords pre-filled from your profile · 4 sources active</p>
             </div>
           </div>
         )}
 
-        {!isLoading && jobs.length > 0 && (
+        {!isLoading && displayedJobs.length > 0 && (
           <>
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm text-gray-500">
-                <span className="font-semibold text-gray-800">{jobs.length} jobs</span>
+                <span className="font-semibold text-gray-800">{displayedJobs.length}</span>
+                {total > jobs.length && <span className="text-gray-400"> of {total}</span>}
+                {displayedJobs.length < jobs.length && (
+                  <span className="text-gray-400"> shown · {jobs.length} fetched</span>
+                )}
                 {' · '}"{prefs.keywords}"{prefs.location ? ` in ${prefs.location}` : ''}
               </p>
-              <button onClick={search} className="btn-ghost text-sm">
+              <button onClick={search} className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 transition-colors">
                 <RefreshCw size={13} /> Refresh
               </button>
             </div>
+
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              {jobs.map((job, i) => <JobCard key={job.id || i} job={job} profile={profile} />)}
+              {displayedJobs.map((job, i) => <JobCard key={job.id || i} job={job} profile={profile} />)}
             </div>
+
             {hasMore && (
               <div className="flex justify-center mt-8">
                 <button
@@ -238,6 +329,23 @@ export function JobsPage({ profile }: JobsPageProps) {
                   {isLoadingMore ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
                   {isLoadingMore ? 'Loading…' : 'Load More'}
                 </button>
+              </div>
+            )}
+
+            {/* Source breakdown footer */}
+            {Object.keys(sourceStats).length > 0 && (
+              <div className="flex items-center justify-center gap-4 mt-6 pt-4 border-t border-gray-200">
+                {ALL_SOURCES.map(source => {
+                  const count = sourceStats[source];
+                  if (count === undefined) return null;
+                  const meta = SOURCE_META[source];
+                  return (
+                    <span key={source} className="flex items-center gap-1.5 text-xs text-gray-400">
+                      <span className={`w-2 h-2 rounded-full ${meta.dot}`} />
+                      {meta.label}: <span className="font-medium text-gray-600">{count}</span>
+                    </span>
+                  );
+                })}
               </div>
             )}
           </>

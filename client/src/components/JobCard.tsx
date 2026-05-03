@@ -4,9 +4,12 @@ import { CandidateProfile } from '../types';
 
 export interface Job {
   id?: string;
+  source?: string;
+  sourceLabel?: string;
   title: string;
   company: string;
   location: string;
+  remote?: boolean;
   jobType?: string;
   experienceLevel?: string;
   postedAt?: string;
@@ -15,6 +18,8 @@ export interface Job {
   companyLogo?: string;
   salary?: string;
   applicantsCount?: string;
+  tags?: string[];
+  matchScore?: number;
 }
 
 interface JobCardProps {
@@ -63,7 +68,20 @@ export function JobCard({ job, profile }: JobCardProps) {
 
           <div className="flex-1 min-w-0">
             <h3 className="text-gray-900 font-semibold text-base leading-snug">{job.title}</h3>
-            <p className="text-gray-500 text-sm mt-0.5">{job.company}</p>
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              <p className="text-gray-500 text-sm">{job.company}</p>
+              {job.sourceLabel && (
+                <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${
+                  job.source === 'linkedin' ? 'bg-[#EEF3F8] text-[#0A66C2]' :
+                  job.source === 'remotive' ? 'bg-green-50 text-green-700' :
+                  job.source === 'arbeitnow' ? 'bg-orange-50 text-orange-700' :
+                  'bg-purple-50 text-purple-700'
+                }`}>{job.sourceLabel}</span>
+              )}
+              {job.remote && (
+                <span className="text-xs font-medium bg-teal-50 text-teal-700 px-1.5 py-0.5 rounded-full">Remote</span>
+              )}
+            </div>
           </div>
 
           {job.applyUrl && (
@@ -101,18 +119,31 @@ export function JobCard({ job, profile }: JobCardProps) {
         </div>
 
         {/* Tags */}
-        <div className="flex flex-wrap gap-2 mt-3">
-          {job.experienceLevel && (
-            <span className="text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200 px-3 py-1 rounded-full">
-              {job.experienceLevel}
-            </span>
-          )}
-          {job.applicantsCount && (
-            <span className="text-xs text-gray-400 px-2 py-1">
-              {job.applicantsCount} applicants
-            </span>
-          )}
-        </div>
+        {(job.experienceLevel || job.applicantsCount || (job.tags && job.tags.length > 0) || job.matchScore) && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {job.matchScore !== undefined && (
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                job.matchScore >= 80 ? 'bg-green-100 text-green-700' :
+                job.matchScore >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'
+              }`}>{job.matchScore}% match</span>
+            )}
+            {job.experienceLevel && (
+              <span className="text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200 px-3 py-1 rounded-full">
+                {job.experienceLevel}
+              </span>
+            )}
+            {job.tags?.map(tag => (
+              <span key={tag} className="text-xs bg-gray-50 text-gray-500 border border-gray-200 px-2.5 py-1 rounded-full">
+                {tag}
+              </span>
+            ))}
+            {job.applicantsCount && (
+              <span className="text-xs text-gray-400 px-2 py-1">
+                {job.applicantsCount} applicants
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Description toggle */}
         {job.description && (

@@ -301,78 +301,24 @@ Respond in this exact format (keep everything very short):
   }
 });
 
-// ─── LinkedIn Jobs (direct scraper) ──────────────────────────────────────────
-const JOB_TYPE_MAP = { 'full-time': 'F', 'part-time': 'P', 'contract': 'C', 'temporary': 'T', 'internship': 'I' };
-const EXP_LEVEL_MAP = { 'internship': '1', 'entry-level': '2', 'associate': '3', 'mid-senior': '4', 'director': '5', 'executive': '6' };
-const DATE_POSTED_MAP = { 'Past 24 hours': 'r86400', 'Past Week': 'r604800', 'Past Month': 'r2592000' };
-
-const PAGE_SIZE = 10;
-
-async function scrapeLinkedInJobs({ keywords, location, jobType, experienceLevel, datePosted, start = 0 }) {
-  const params = new URLSearchParams({ keywords, start: String(start), count: String(PAGE_SIZE), sortBy: 'DD' });
-  if (location) params.set('location', location);
-  if (jobType && JOB_TYPE_MAP[jobType]) params.set('f_JT', JOB_TYPE_MAP[jobType]);
-  if (experienceLevel && EXP_LEVEL_MAP[experienceLevel]) params.set('f_E', EXP_LEVEL_MAP[experienceLevel]);
-  if (datePosted && DATE_POSTED_MAP[datePosted]) params.set('f_TPR', DATE_POSTED_MAP[datePosted]);
-
-  const url = `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?${params}`;
-  console.log('[Jobs] scraping:', url);
-
-  const res = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.5',
-    },
-  });
-
-  if (!res.ok) throw new Error(`LinkedIn returned ${res.status}`);
-
-  const html = await res.text();
-  const $ = cheerio.load(html);
-
-  const jobs = [];
-  $('li').each((_, el) => {
-    const card = $(el);
-    const urn = card.find('[data-entity-urn]').attr('data-entity-urn') || '';
-    const jobId = urn.split(':').pop() || String(Math.random());
-    const title = card.find('.base-search-card__title').text().trim();
-    const company = card.find('.base-search-card__subtitle').text().trim();
-    const location = card.find('.job-search-card__location').text().trim();
-    const timeEl = card.find('time');
-    const postedAtDate = timeEl.attr('datetime') || '';   // ISO date for sorting
-    const postedAt = timeEl.text().trim()
-      || card.find('.job-search-card__listdate').text().trim()
-      || postedAtDate;
-    const applyUrl = card.find('a.base-card__full-link').attr('href') || '';
-    const companyLogo = card.find('img.artdeco-entity-image').attr('data-delayed-url') || card.find('img').attr('src') || '';
-
-    if (title) jobs.push({ jobId, title, company, location, postedAt, postedAtDate, applyUrl, companyLogo });
-  });
-
-  // Sort most recent first — ISO date strings sort correctly lexicographically
-  jobs.sort((a, b) => {
-    if (!a.postedAtDate && !b.postedAtDate) return 0;
-    if (!a.postedAtDate) return 1;
-    if (!b.postedAtDate) return -1;
-    return b.postedAtDate.localeCompare(a.postedAtDate);
-  });
-
-  return jobs;
-}
+// ─── Job Aggregator ───────────────────────────────────────────────────────────
+const { aggregateJobs, ALL_SOURCES } = require('./jobs/aggregator');
 
 app.get('/api/jobs/status', (_req, res) => {
-  res.json({ serverKeyAvailable: true });
+  res.json({ serverKeyAvailable: true, sources: ALL_SOURCES });
 });
 
 app.post('/api/jobs/search', async (req, res) => {
-  const { keywords, location, jobType, experienceLevel, datePosted, start = 0 } = req.body;
+  const { keywords, location, jobType, experienceLevel, datePosted, page = 0 } = req.body;
   if (!keywords) return res.status(400).json({ error: 'keywords is required.' });
 
   try {
-    const jobs = await scrapeLinkedInJobs({ keywords, location, jobType, experienceLevel, datePosted, start });
-    console.log(`[Jobs] scraped ${jobs.length} results for "${keywords}" (start=${start})`);
-    res.json({ jobs, hasMore: jobs.length === PAGE_SIZE });
+    const { jobs, sourceStats, hasMore } = await aggregateJobs(
+      { keywords, location, jobType, experienceLevel, datePosted, page },
+      ALL_SOURCES
+    );
+    console.log(`[Jobs] returning ${jobs.length} jobs (page=${page}) for "${keywords}" | hasMore=${hasMore}`);
+    res.json({ jobs, sourceStats, total: jobs.length, hasMore });
   } catch (err) {
     console.error('Jobs search error:', err.message);
     res.status(500).json({ error: err.message || 'Failed to fetch jobs' });
