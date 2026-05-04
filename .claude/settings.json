@@ -7,7 +7,14 @@
       "Bash(node -e ' *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(curl -s \"https://api.apify.com/v2/acts/worldunboxer~rapid-linkedin-scraper\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s \"https://api.apify.com/v2/acts/worldunboxer~rapid-linkedin-scraper/input-schema\")",
+      "Bash(curl -s \"https://api.apify.com/v2/acts/worldunboxer~rapid-linkedin-scraper/versions/1.2\")",
+      "Bash(curl -s \"https://api.apify.com/v2/acts/worldunboxer~rapid-linkedin-scraper/webhooks\")",
+      "Bash(curl -s \"https://api.apify.com/v2/store?search=worldunboxer+rapid-linkedin\")",
+      "Bash(python3 -c ' *)"
     ]
   }
 }

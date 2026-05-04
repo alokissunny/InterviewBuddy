@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Loader2, AlertCircle, Briefcase, MapPin, SlidersHorizontal, RefreshCw, Wifi } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Loader2, AlertCircle, Briefcase, MapPin, SlidersHorizontal, RefreshCw } from 'lucide-react';
 import { CandidateProfile } from '../types';
 import { JobCard, Job } from '../components/JobCard';
 
@@ -21,15 +21,6 @@ const JOB_TYPES = ['', 'full-time', 'part-time', 'contract', 'internship'];
 const EXP_LEVELS = ['', 'internship', 'entry-level', 'associate', 'mid-senior', 'director', 'executive'];
 const DATE_OPTIONS = ['', 'Past 24 hours', 'Past Week', 'Past Month'];
 
-const ALL_SOURCES = ['linkedin', 'remotive', 'arbeitnow', 'remoteok'] as const;
-type Source = typeof ALL_SOURCES[number];
-
-const SOURCE_META: Record<Source, { label: string; color: string; dot: string }> = {
-  linkedin:  { label: 'LinkedIn',  color: 'bg-[#EEF3F8] text-[#0A66C2] border-[#bfd5ed]', dot: 'bg-[#0A66C2]' },
-  remotive:  { label: 'Remotive',  color: 'bg-green-50 text-green-700 border-green-200',   dot: 'bg-green-500' },
-  arbeitnow: { label: 'Arbeitnow', color: 'bg-orange-50 text-orange-700 border-orange-200', dot: 'bg-orange-500' },
-  remoteok:  { label: 'RemoteOK',  color: 'bg-purple-50 text-purple-700 border-purple-200', dot: 'bg-purple-500' },
-};
 
 function normaliseJob(raw: Record<string, unknown>): Job {
   return {
@@ -64,8 +55,7 @@ export function JobsPage({ profile }: JobsPageProps) {
     return { keywords: profile.title || '', location: '', jobType: '', experienceLevel: '', datePosted: 'Past Week' };
   });
 
-  const [activeSources, setActiveSources] = useState<Source[]>([...ALL_SOURCES]);
-  const [jobs, setJobs] = useState<Job[]>([]);
+const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +63,6 @@ export function JobsPage({ profile }: JobsPageProps) {
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
-  const [sourceStats, setSourceStats] = useState<Record<string, number>>({});
 
   const updatePref = (key: keyof SearchPrefs, value: string) => {
     setPrefs(p => {
@@ -83,15 +72,6 @@ export function JobsPage({ profile }: JobsPageProps) {
     });
   };
 
-  const toggleSource = (source: Source) => {
-    setActiveSources(prev =>
-      prev.includes(source)
-        ? prev.length > 1 ? prev.filter(s => s !== source) : prev
-        : [...prev, source]
-    );
-  };
-
-  // Always fetch all sources from server; chips filter client-side for instant feedback
   const fetchJobs = async (pageNum: number, append: boolean) => {
     if (!prefs.keywords.trim()) return;
     append ? setIsLoadingMore(true) : setIsLoading(true);
@@ -115,7 +95,6 @@ export function JobsPage({ profile }: JobsPageProps) {
       // On Load More: hide button only when 0 new jobs come back (truly exhausted)
       setHasMore(append ? newJobs.length > 0 : (data.hasMore ?? newJobs.length > 0));
       setTotal(data.total ?? newJobs.length);
-      setSourceStats(data.sourceStats ?? {});
       setPage(pageNum);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed');
@@ -128,17 +107,7 @@ export function JobsPage({ profile }: JobsPageProps) {
   const search = () => fetchJobs(0, false);
   const loadMore = () => fetchJobs(page + 1, true);
 
-  // Client-side filter — chips take effect instantly without a new server request
-  const displayedJobs = jobs.filter(j => !j.source || activeSources.includes(j.source as Source));
-
-  // Counts per source from the actual (deduped) jobs array — more accurate than server sourceStats
-  const jobCountBySource = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const job of jobs) {
-      if (job.source) counts[job.source] = (counts[job.source] || 0) + 1;
-    }
-    return counts;
-  }, [jobs]);
+  const displayedJobs = jobs;
 
   useEffect(() => {
     if (prefs.keywords.trim()) fetchJobs(0, false);
@@ -211,32 +180,6 @@ export function JobsPage({ profile }: JobsPageProps) {
           </div>
         </div>
 
-        {/* Source chips */}
-        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
-          <span className="text-xs text-gray-400 font-medium flex items-center gap-1 mr-1">
-            <Wifi size={11} /> Sources:
-          </span>
-          {ALL_SOURCES.map(source => {
-            const meta = SOURCE_META[source];
-            const active = activeSources.includes(source);
-            const count = sourceStats[source];
-            return (
-              <button
-                key={source}
-                onClick={() => toggleSource(source)}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-                  active ? meta.color : 'bg-gray-50 text-gray-400 border-gray-200'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${active ? meta.dot : 'bg-gray-300'}`} />
-                {meta.label}
-                {searched && jobCountBySource[source] !== undefined && (
-                  <span className="opacity-60">({jobCountBySource[source]})</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
       </div>
 
       {/* Results */}
@@ -254,8 +197,8 @@ export function JobsPage({ profile }: JobsPageProps) {
               <Loader2 size={28} className="text-[#0A66C2] animate-spin" />
             </div>
             <div className="text-center">
-              <p className="text-gray-700 font-medium">Searching {activeSources.length} sources…</p>
-              <p className="text-gray-400 text-sm mt-1">LinkedIn · Remotive · Arbeitnow · RemoteOK</p>
+              <p className="text-gray-700 font-medium">Searching LinkedIn…</p>
+              <p className="text-gray-400 text-sm mt-1">This may take up to a minute</p>
             </div>
           </div>
         )}
@@ -275,26 +218,14 @@ export function JobsPage({ profile }: JobsPageProps) {
           </div>
         )}
 
-        {!isLoading && searched && jobs.length > 0 && displayedJobs.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-24 gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">
-              <Wifi size={28} className="text-gray-300" />
-            </div>
-            <div className="text-center">
-              <p className="text-gray-500 font-medium">All sources hidden</p>
-              <p className="text-gray-400 text-sm mt-1">Enable at least one source above to see results</p>
-            </div>
-          </div>
-        )}
-
-        {!isLoading && !searched && (
+{!isLoading && !searched && (
           <div className="flex flex-col items-center justify-center py-24 gap-4">
             <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">
               <Search size={28} className="text-gray-300" />
             </div>
             <div className="text-center">
               <p className="text-gray-500 font-medium">Ready to search</p>
-              <p className="text-gray-400 text-sm mt-1">Keywords pre-filled from your profile · 4 sources active</p>
+              <p className="text-gray-400 text-sm mt-1">Keywords pre-filled from your profile</p>
             </div>
           </div>
         )}
@@ -332,22 +263,6 @@ export function JobsPage({ profile }: JobsPageProps) {
               </div>
             )}
 
-            {/* Source breakdown footer */}
-            {Object.keys(sourceStats).length > 0 && (
-              <div className="flex items-center justify-center gap-4 mt-6 pt-4 border-t border-gray-200">
-                {ALL_SOURCES.map(source => {
-                  const count = sourceStats[source];
-                  if (count === undefined) return null;
-                  const meta = SOURCE_META[source];
-                  return (
-                    <span key={source} className="flex items-center gap-1.5 text-xs text-gray-400">
-                      <span className={`w-2 h-2 rounded-full ${meta.dot}`} />
-                      {meta.label}: <span className="font-medium text-gray-600">{count}</span>
-                    </span>
-                  );
-                })}
-              </div>
-            )}
           </>
         )}
       </div>
