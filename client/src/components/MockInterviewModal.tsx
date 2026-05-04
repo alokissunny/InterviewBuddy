@@ -30,9 +30,10 @@ interface TopicRecord {
   score: number | null;
 }
 
-// loading → intro → asking → listening → thinking → followup_ask → feedback_speaking → complete
+// loading → preview → intro → asking → listening → thinking → feedback_speaking → complete
 type Stage =
   | 'loading'
+  | 'preview'       // shows all questions + suggested answers before interview starts
   | 'intro'
   | 'asking'        // TTS reading the (follow-up) question
   | 'listening'     // mic live, user speaking
@@ -258,10 +259,10 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
       setQuestions(data.questions);
       setTopicIdx(0);
       setRecords([]);
-      startIntro(data.questions);
+      setStage('preview');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start');
-      setStage('intro');
+      setStage('preview');
     }
   }, [job, profile]); // eslint-disable-line
 
@@ -437,6 +438,7 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
             <p className="text-sm font-semibold text-white truncate">Alex · {job.company}</p>
             <div className="flex items-center gap-1.5 mt-0.5">
               {stage === 'loading' && <p className="text-xs text-gray-500">Preparing interview…</p>}
+              {stage === 'preview' && <p className="text-xs text-gray-400">{questions.length} questions ready · review &amp; start when ready</p>}
               {(stage === 'intro' || stage === 'asking') && tts.isSpeaking && (
                 <p className="text-xs text-[#0A66C2] flex items-center gap-1"><Volume2 size={11} /> Speaking…</p>
               )}
@@ -492,6 +494,37 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
             </div>
           )}
 
+          {/* Preview — all questions with suggested answers */}
+          {stage === 'preview' && (
+            <div className="space-y-3">
+              <div className="bg-[#0A66C2]/10 border border-[#0A66C2]/20 rounded-2xl px-4 py-3">
+                <p className="text-sm font-semibold text-white mb-0.5">Your interview for {job.title}</p>
+                <p className="text-xs text-gray-400">{job.company} · {questions.length} questions · voice-based · ~15 min</p>
+              </div>
+
+              {questions.map((q, i) => (
+                <div key={q.id} className="bg-gray-800/60 border border-gray-700/50 rounded-2xl overflow-hidden">
+                  {/* Question header */}
+                  <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+                    <span className="text-xs font-bold text-gray-500">Q{i + 1}</span>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${TYPE_COLORS[q.type] || ''}`}>
+                      {q.type}
+                    </span>
+                  </div>
+                  {/* Question text */}
+                  <p className="px-4 pb-3 text-sm font-medium text-white leading-relaxed">{q.question}</p>
+                  {/* Suggested answer */}
+                  {q.hint && (
+                    <div className="px-4 pb-3 pt-2 border-t border-gray-700/40">
+                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-1.5">Suggested approach</p>
+                      <p className="text-xs text-gray-400 leading-relaxed">{q.hint}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Error */}
           {error && (
             <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm text-center">
@@ -500,7 +533,7 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
           )}
 
           {/* Chat conversation */}
-          {stage !== 'loading' && stage !== 'complete' && conversation.map((turn, i) => (
+          {stage !== 'loading' && stage !== 'preview' && stage !== 'complete' && conversation.map((turn, i) => (
             <ChatBubble key={i} turn={turn} />
           ))}
 
@@ -619,10 +652,20 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
             onClick={() => { tts.stop(); speech.stopListening(); onClose(); }}
             className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
           >
-            {stage === 'complete' ? 'Close' : 'Exit'}
+            {stage === 'complete' ? 'Close' : stage === 'preview' ? 'Cancel' : 'Exit'}
           </button>
 
           <div className="flex items-center gap-3">
+            {/* Preview — start voice interview */}
+            {stage === 'preview' && questions.length > 0 && (
+              <button
+                onClick={() => startIntro(questions)}
+                className="flex items-center gap-2 px-5 py-2 bg-[#0A66C2] hover:bg-[#004182] text-white text-sm font-semibold rounded-xl shadow-lg shadow-[#0A66C2]/20 transition-all"
+              >
+                <Mic size={13} /> Start Interview
+              </button>
+            )}
+
             {/* Listening: timer + done button */}
             {stage === 'listening' && (
               <>
