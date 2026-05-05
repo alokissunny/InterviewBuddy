@@ -1,31 +1,24 @@
 import React from 'react';
-import { Mic, MicOff, Monitor, MonitorOff, Loader2 } from 'lucide-react';
-
-type AudioMode = 'mic' | 'system' | 'both';
+import { Radio, Loader2 } from 'lucide-react';
 
 interface AudioIndicatorProps {
   isListening: boolean;
   isAnalyzing: boolean;
-  mode?: AudioMode;
 }
 
-export function AudioIndicator({ isListening, isAnalyzing, mode = 'mic' }: AudioIndicatorProps) {
-  const Icon = isListening
-    ? (mode === 'mic' ? Mic : Monitor)
-    : (mode === 'mic' ? MicOff : MonitorOff);
-
+export function AudioIndicator({ isListening, isAnalyzing }: AudioIndicatorProps) {
   const label = isAnalyzing
     ? 'Processing…'
     : isListening
-      ? (mode === 'system' ? 'Capturing' : mode === 'both' ? 'Mic + System' : 'Listening')
-      : 'Idle';
+    ? 'Listening'
+    : 'Idle';
 
   return (
     <div className="flex items-center gap-3">
       <div className={`relative flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-300 ${
         isListening ? 'bg-green-500/20 ring-2 ring-green-500/40 shadow-lg shadow-green-500/10' : 'bg-gray-100'
       }`}>
-        <Icon size={16} className={isListening ? 'text-green-600' : 'text-gray-400'} />
+        <Radio size={16} className={isListening ? 'text-green-600' : 'text-gray-400'} />
         {isListening && <span className="absolute inset-0 rounded-xl bg-green-500/15 animate-ping" />}
       </div>
 

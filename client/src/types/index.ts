@@ -37,6 +37,7 @@ export interface TranscriptEntry {
   text: string;
   timestamp: Date;
   isInterim: boolean;
+  speaker?: 'interviewer' | 'interviewee';
 }
 
 export type AppPage = 'setup' | 'interview';

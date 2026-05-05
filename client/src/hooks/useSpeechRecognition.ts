@@ -4,6 +4,21 @@ import { TranscriptEntry } from '../types';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type SpeechRecognitionType = any;
 
+// Browser-injected or TTS-echo phrases that appear at mic startup and should be ignored
+const SPURIOUS_PHRASES = new Set([
+  'thank you.',
+  'thank you',
+  'thanks.',
+  'thanks',
+  'you.',
+  'okay.',
+  'okay',
+  'ok.',
+  'ok',
+  '.',
+  '',
+]);
+
 interface UseSpeechRecognitionReturn {
   entries: TranscriptEntry[];
   interimText: string;
@@ -88,17 +103,21 @@ export function useSpeechRecognition(
       }
 
       if (final) {
-        const wordCount = final.trim().split(/\s+/).filter(Boolean).length;
+        const cleaned = final.trim();
+        // Drop browser-injected filler phrases that appear at mic start
+        if (SPURIOUS_PHRASES.has(cleaned.toLowerCase())) return;
+
+        const wordCount = cleaned.split(/\s+/).filter(Boolean).length;
         accumulatedWordsRef.current += wordCount;
 
         const entry: TranscriptEntry = {
           id: Date.now().toString(),
-          text: final.trim(),
+          text: cleaned,
           timestamp: new Date(),
           isInterim: false,
         };
         setEntries(prev => [...prev, entry]);
-        resetSilenceTimer(final.trim());
+        resetSilenceTimer(cleaned);
         setInterimText('');
       } else {
         setInterimText(interim);

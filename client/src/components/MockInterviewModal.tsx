@@ -303,7 +303,9 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
     setEditableTranscript('');
     setStage('listening');
     startTimer();
-    speech.startListening();
+    // Small delay lets TTS audio dissipate from speakers before mic opens,
+    // preventing the recognition from picking up the interviewer's voice as user speech.
+    setTimeout(() => speech.startListening(), 400);
   };
 
   // Play beep the moment the mic is confirmed ready — tells user to start speaking

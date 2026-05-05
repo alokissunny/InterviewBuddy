@@ -1,18 +1,15 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
-  Mic, MicOff, RotateCcw, User, ChevronDown, ChevronUp,
-  Zap, Monitor, MonitorOff, AlertCircle, Info, Settings, LogOut,
+  RotateCcw, User, ChevronDown, ChevronUp,
+  Zap, MonitorOff, AlertCircle, Info, Settings, LogOut, Radio,
 } from 'lucide-react';
 import { CandidateProfile, TranscriptEntry } from '../types';
-import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useSystemAudioCapture } from '../hooks/useSystemAudioCapture';
 import { useAnalysis } from '../hooks/useAnalysis';
 import { AudioIndicator } from '../components/AudioIndicator';
 import { TranscriptPanel } from '../components/TranscriptPanel';
 import { ResponsePanel } from '../components/ResponsePanel';
 import { WhisperKeyModal } from '../components/WhisperKeyModal';
-
-type AudioMode = 'mic' | 'system' | 'both';
 
 const WHISPER_KEY_STORAGE = 'interview_copilot_whisper_key';
 
@@ -25,14 +22,12 @@ interface InterviewPageProps {
 export function InterviewPage({ profile, onReset, onChangeProfile }: InterviewPageProps) {
   const [autoAnalyze, setAutoAnalyze] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
-  const [audioMode, setAudioMode] = useState<AudioMode>('system');
   const [sessionStart] = useState(new Date());
   const [elapsed, setElapsed] = useState('00:00');
   const [captureNotice, setCaptureNotice] = useState<string | null>(null);
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [whisperKey, setWhisperKey] = useState(() => localStorage.getItem(WHISPER_KEY_STORAGE) || '');
   const [entries, setEntries] = useState<TranscriptEntry[]>([]);
-  const [interimText, setInterimText] = useState('');
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
@@ -47,12 +42,13 @@ export function InterviewPage({ profile, onReset, onChangeProfile }: InterviewPa
 
   const { response, rawResponse, isAnalyzing, error, analyze } = useAnalysis(profile);
 
-  const addEntry = useCallback((text: string) => {
+  const addInterviewerEntry = useCallback((text: string) => {
     const entry: TranscriptEntry = {
       id: `${Date.now()}-${Math.random()}`,
       text,
       timestamp: new Date(),
       isInterim: false,
+      speaker: 'interviewer',
     };
     setEntries(prev => [...prev, entry]);
 
@@ -67,48 +63,24 @@ export function InterviewPage({ profile, onReset, onChangeProfile }: InterviewPa
     setEntries(prev => prev.map(e => e.id === id ? { ...e, text } : e));
   }, []);
 
-  // Microphone (Web Speech API)
-  const {
-    interimText: micInterim,
-    isListening: micListening,
-    isSupported: micSupported,
-    startListening: startMic,
-    stopListening: stopMic,
-  } = useSpeechRecognition(addEntry, 2500);
-
-  React.useEffect(() => { setInterimText(micInterim); }, [micInterim]);
-
-  // System audio (getDisplayMedia + Whisper)
+  // Tab audio only — captures the interviewer's voice from a chosen browser tab
   const {
     isCapturing: sysCapturing,
     isTranscribing: sysTranscribing,
-    captureError: sysCaptureError,
     serverHasKey,
     startCapture: startSys,
     stopCapture: stopSys,
-  } = useSystemAudioCapture(addEntry, whisperKey, (errType, msg) => {
+  } = useSystemAudioCapture(addInterviewerEntry, whisperKey, (errType, msg) => {
     setCaptureNotice(msg);
     if (errType === 'no-api-key') setShowKeyModal(true);
     else setTimeout(() => setCaptureNotice(null), 8000);
   });
 
-  const isActive = (audioMode === 'mic' && micListening)
-    || (audioMode === 'system' && sysCapturing)
-    || (audioMode === 'both' && (micListening || sysCapturing));
+  const isActive = sysCapturing;
+  const needsKey = serverHasKey === false && !whisperKey;
 
-  const handleStart = useCallback(async () => {
-    if (audioMode === 'mic' || audioMode === 'both') startMic();
-    if (audioMode === 'system' || audioMode === 'both') await startSys();
-  }, [audioMode, startMic, startSys]);
-
-  const handleStop = useCallback(() => {
-    stopMic();
-    stopSys();
-  }, [stopMic, stopSys]);
-
-  const needsKey = (audioMode === 'system' || audioMode === 'both')
-    && serverHasKey === false
-    && !whisperKey;
+  const handleStart = useCallback(async () => { await startSys(); }, [startSys]);
+  const handleStop  = useCallback(() => { stopSys(); }, [stopSys]);
 
   const handleSaveKey = (key: string) => {
     setWhisperKey(key);
@@ -117,24 +89,12 @@ export function InterviewPage({ profile, onReset, onChangeProfile }: InterviewPa
     setCaptureNotice(null);
   };
 
-  const getModeLabel = (mode: AudioMode) => {
-    if (mode === 'mic') return 'Mic Only';
-    if (mode === 'system') return 'Computer Audio';
-    return 'Mic + Computer';
-  };
-
   const statusMessage = () => {
     if (isActive) {
-      if (audioMode === 'system') return `Capturing computer audio · chunks sent every 4s${sysTranscribing ? ' · transcribing...' : ''}`;
-      if (audioMode === 'both') return `Mic + computer audio active`;
-      return `Microphone active${autoAnalyze ? ' · auto-analyzing' : ''}`;
+      return `Capturing tab audio${sysTranscribing ? ' · transcribing…' : ''}`;
     }
-    if (audioMode === 'system' || audioMode === 'both') {
-      if (needsKey) return null;
-      return 'When dialog opens: pick a tab/window and check "Share audio"';
-    }
-    if (audioMode === 'mic' && !micSupported) return null;
-    return 'Click Start Listening to begin';
+    if (needsKey) return null;
+    return 'Click Start Listening — pick the browser tab playing your interview';
   };
 
   return (
@@ -143,7 +103,7 @@ export function InterviewPage({ profile, onReset, onChangeProfile }: InterviewPa
       <div className="flex items-center justify-between px-5 py-2 bg-white border-b border-gray-100 shrink-0">
         {/* Left: live status */}
         <div className="flex items-center gap-3">
-          <AudioIndicator isListening={isActive} isAnalyzing={isAnalyzing || sysTranscribing} mode={audioMode} />
+          <AudioIndicator isListening={isActive} isAnalyzing={isAnalyzing || sysTranscribing} />
           <div className="w-px h-4 bg-gray-200" />
           <span className="font-mono text-xs text-gray-400 tabular-nums">{elapsed}</span>
         </div>
@@ -236,7 +196,7 @@ export function InterviewPage({ profile, onReset, onChangeProfile }: InterviewPa
         <div className="w-2/5 flex flex-col overflow-hidden">
           <TranscriptPanel
             entries={entries}
-            interimText={interimText}
+            interimText=""
             onAnalyze={analyze}
             onClear={clearEntries}
             onUpdateEntry={updateEntry}
@@ -257,17 +217,14 @@ export function InterviewPage({ profile, onReset, onChangeProfile }: InterviewPa
       <div className="flex items-center justify-between px-5 py-3.5 bg-white border-t border-gray-200 shrink-0">
         {/* Status */}
         <div className="flex flex-col gap-1 min-w-0">
-          {audioMode === 'mic' && !micSupported && (
-            <p className="text-sm text-amber-600">Mic not supported — use Chrome or Edge</p>
-          )}
           {needsKey && (
             <p className="text-sm text-amber-600 flex items-center gap-1.5">
               <AlertCircle size={13} />
-              API key required for computer audio —
+              Transcription API key required —
               <button onClick={() => setShowKeyModal(true)} className="underline hover:text-amber-700">add key</button>
             </p>
           )}
-          {(audioMode === 'system' || audioMode === 'both') && (serverHasKey || whisperKey) && (
+          {!needsKey && (serverHasKey || whisperKey) && (
             <p className="text-sm text-gray-400 flex items-center gap-1.5">
               <Info size={13} className="text-[#0A66C2]" />
               {whisperKey
@@ -285,34 +242,12 @@ export function InterviewPage({ profile, onReset, onChangeProfile }: InterviewPa
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
-          {/* Audio source toggle */}
-          <div className="flex items-center bg-gray-100 rounded-xl p-1 gap-0.5 border border-gray-200">
-            {(['mic', 'system', 'both'] as AudioMode[]).map(mode => (
-              <button
-                key={mode}
-                onClick={() => { if (!isActive) setAudioMode(mode); }}
-                disabled={isActive}
-                title={getModeLabel(mode)}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium transition-all disabled:cursor-not-allowed ${
-                  audioMode === mode
-                    ? 'bg-[#0A66C2] text-white shadow-md shadow-[#0A66C2]/30'
-                    : 'text-gray-600 hover:text-gray-900 disabled:opacity-40'
-                }`}
-              >
-                {mode === 'mic' && <Mic size={13} />}
-                {mode === 'system' && <Monitor size={13} />}
-                {mode === 'both' && <span className="text-xs font-bold leading-none">M+C</span>}
-                {mode === 'mic' ? 'Mic' : mode === 'system' ? 'Computer' : 'Both'}
-              </button>
-            ))}
-          </div>
-
-          {/* Settings */}
-          {(audioMode === 'system' || audioMode === 'both') && (
+          {/* API key settings */}
+          {!isActive && (
             <button
               onClick={() => setShowKeyModal(true)}
               className="p-2.5 text-gray-500 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-xl border border-gray-200 transition-all"
-              title="Change transcription API key"
+              title="Transcription API key"
             >
               <Settings size={16} />
             </button>
@@ -332,7 +267,7 @@ export function InterviewPage({ profile, onReset, onChangeProfile }: InterviewPa
           {/* Start / Stop */}
           <button
             onClick={isActive ? handleStop : handleStart}
-            disabled={(!isActive && audioMode === 'mic' && !micSupported) || (!isActive && needsKey)}
+            disabled={!isActive && needsKey}
             className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               isActive
                 ? 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-500/25'
@@ -340,8 +275,8 @@ export function InterviewPage({ profile, onReset, onChangeProfile }: InterviewPa
             }`}
           >
             {isActive
-              ? <>{audioMode !== 'mic' ? <MonitorOff size={16} /> : <MicOff size={16} />} Stop</>
-              : <>{audioMode !== 'mic' ? <Monitor size={16} /> : <Mic size={16} />} Start Listening</>
+              ? <><MonitorOff size={16} /> Stop</>
+              : <><Radio size={16} /> Start Listening</>
             }
           </button>
         </div>

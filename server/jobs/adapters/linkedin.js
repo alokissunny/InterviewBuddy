@@ -74,4 +74,4 @@ async function fetchLinkedIn({ keywords, location, jobType, experienceLevel, dat
   return { jobs, hasMore: jobs.length >= PAGE_SIZE };
 }
 
-module.exports = { fetchLinkedIn };
+module.exports = { fetchLinkedIn, PAGE_SIZE };

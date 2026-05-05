@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Briefcase, Mic, Search, User, Users } from 'lucide-react';
 import { CandidateProfile } from './types';
-import { SetupPage } from './pages/SetupPage';
+import { LoginPage, CVOnboardingPage } from './pages/SetupPage';
 import { InterviewPage } from './pages/InterviewPage';
 import { JobsPage } from './pages/JobsPage';
 import { ProfilePage } from './pages/ProfilePage';
@@ -9,19 +9,24 @@ import { ConnectionsPage } from './pages/ConnectionsPage';
 
 export type MainTab = 'interview' | 'jobs' | 'connections' | 'profile';
 
+type AppPage = 'login' | 'cv-onboarding' | 'main';
+
 const PROFILE_KEY = 'interview_copilot_profile';
 
 function loadSavedProfile(): CandidateProfile | null {
   try {
     const raw = localStorage.getItem(PROFILE_KEY);
     return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 function saveProfile(p: CandidateProfile) {
   localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+}
+
+// Profile needs onboarding if it has no skills or experience
+function isProfileComplete(p: CandidateProfile): boolean {
+  return (p.skills?.length ?? 0) > 0 || (p.experience?.length ?? 0) > 0;
 }
 
 const NAV_TABS: { id: MainTab; label: string; icon: React.ReactNode }[] = [
@@ -31,63 +36,40 @@ const NAV_TABS: { id: MainTab; label: string; icon: React.ReactNode }[] = [
   { id: 'profile',     label: 'My Profile',  icon: <User size={14} /> },
 ];
 
-function AppHeader({
-  profile,
-  activeTab,
-  onTabChange,
-}: {
+function AppHeader({ profile, activeTab, onTabChange }: {
   profile: CandidateProfile;
   activeTab: MainTab;
   onTabChange: (t: MainTab) => void;
 }) {
   const initials = profile.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-
   return (
-    <header
-      className="flex items-stretch shrink-0 h-14 px-5"
-      style={{
-        background: '#0d1117',
-        borderBottom: '1px solid rgba(255,255,255,0.07)',
-        boxShadow: '0 1px 20px rgba(0,0,0,0.35)',
-      }}
-    >
-      {/* Logo */}
+    <header className="flex items-stretch shrink-0 h-14 px-5"
+      style={{ background: '#0d1117', borderBottom: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 1px 20px rgba(0,0,0,0.35)' }}>
       <div className="flex items-center gap-2.5 mr-8">
-        <div
-          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-          style={{ background: 'linear-gradient(135deg,#0A66C2,#004182)', boxShadow: '0 0 12px rgba(10,102,194,0.5)' }}
-        >
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+          style={{ background: 'linear-gradient(135deg,#0A66C2,#004182)', boxShadow: '0 0 12px rgba(10,102,194,0.5)' }}>
           <Briefcase size={14} className="text-white" />
         </div>
         <span className="text-white font-bold text-sm tracking-tight whitespace-nowrap">Interview Copilot</span>
       </div>
 
-      {/* Nav tabs — span full header height for underline effect */}
       <nav className="flex items-stretch flex-1">
         {NAV_TABS.map(t => (
-          <button
-            key={t.id}
-            onClick={() => onTabChange(t.id)}
+          <button key={t.id} onClick={() => onTabChange(t.id)}
             className={`flex items-center gap-2 px-5 h-full text-sm font-medium transition-all border-b-2 whitespace-nowrap ${
               activeTab === t.id
                 ? 'text-white border-[#0A66C2]'
                 : 'text-slate-500 hover:text-slate-200 border-transparent hover:border-slate-600'
-            }`}
-          >
-            {t.icon}
-            {t.label}
+            }`}>
+            {t.icon}{t.label}
           </button>
         ))}
       </nav>
 
-      {/* User avatar */}
       <div className="flex items-center gap-2.5 ml-4">
         {profile.photoUrl ? (
-          <img
-            src={profile.photoUrl}
-            alt={profile.name}
-            className="w-8 h-8 rounded-full object-cover ring-2 ring-slate-700"
-          />
+          <img src={profile.photoUrl} alt={profile.name}
+            className="w-8 h-8 rounded-full object-cover ring-2 ring-slate-700" />
         ) : (
           <div className="w-8 h-8 rounded-full bg-[#0A66C2] flex items-center justify-center ring-2 ring-slate-700">
             <span className="text-white text-xs font-bold">{initials}</span>
@@ -100,32 +82,41 @@ function AppHeader({
 }
 
 export default function App() {
+  const [page, setPage] = useState<AppPage>('login');
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
-  const [page, setPage] = useState<'setup' | 'main'>('setup');
+  const [pendingProfile, setPendingProfile] = useState<CandidateProfile | null>(null); // basic profile awaiting CV
   const [activeTab, setActiveTab] = useState<MainTab>('interview');
   const [linkedinError, setLinkedinError] = useState<string | null>(null);
-  const [linkedinProfile, setLinkedinProfile] = useState<CandidateProfile | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const lp = params.get('lp');
+    const lp      = params.get('lp');
     const liError = params.get('linkedin_error');
+    window.history.replaceState({}, '', window.location.pathname);
 
     if (lp) {
       try {
         const decoded = JSON.parse(atob(lp)) as CandidateProfile;
-        // Show the LinkedIn profile card for confirmation instead of auto-proceeding
-        setLinkedinProfile(decoded);
-      } catch { /* malformed */ }
-      window.history.replaceState({}, '', window.location.pathname);
+        if (isProfileComplete(decoded)) {
+          // LinkedIn already returned enough data — go straight to app
+          saveProfile(decoded);
+          setProfile(decoded);
+          setPage('main');
+        } else {
+          // Basic OAuth profile — need CV to enrich
+          setPendingProfile(decoded);
+          setPage('cv-onboarding');
+        }
+      } catch { /* malformed lp */ }
       return;
     }
 
     if (liError) {
       setLinkedinError(decodeURIComponent(liError));
-      window.history.replaceState({}, '', window.location.pathname);
+      return;
     }
 
+    // Returning user with saved profile
     const saved = loadSavedProfile();
     if (saved) {
       setProfile(saved);
@@ -133,18 +124,11 @@ export default function App() {
     }
   }, []);
 
-  const handleProfileReady = (p: CandidateProfile) => {
-    saveProfile(p);
-    setProfile(p);
+  const handleCVComplete = (enriched: CandidateProfile) => {
+    saveProfile(enriched);
+    setProfile(enriched);
+    setPendingProfile(null);
     setPage('main');
-  };
-
-  const handleReset = () => {
-    setPage('setup');
-  };
-
-  const handleChangeProfile = () => {
-    setPage('setup');
   };
 
   const handleUpdateProfile = (p: CandidateProfile) => {
@@ -152,42 +136,52 @@ export default function App() {
     setProfile(p);
   };
 
-  if (page === 'setup' || !profile) {
+  const handleChangeProfile = () => {
+    localStorage.removeItem(PROFILE_KEY);
+    setProfile(null);
+    setPendingProfile(null);
+    setPage('login');
+  };
+
+  // ── Login ──
+  if (page === 'login') {
     return (
-      <SetupPage
-        onProfileReady={handleProfileReady}
-        savedProfile={loadSavedProfile()}
+      <LoginPage
         linkedinError={linkedinError}
         onClearLinkedinError={() => setLinkedinError(null)}
-        linkedinProfile={linkedinProfile}
-        onLinkedinProfileAccept={(p) => { setLinkedinProfile(null); handleProfileReady(p); }}
-        onLinkedinProfileDismiss={() => setLinkedinProfile(null)}
       />
     );
   }
 
-  return (
-    <div className="h-screen flex flex-col overflow-hidden bg-[#F3F2EF]">
-      <AppHeader profile={profile} activeTab={activeTab} onTabChange={setActiveTab} />
+  // ── CV Onboarding ──
+  if (page === 'cv-onboarding' && pendingProfile) {
+    return (
+      <CVOnboardingPage
+        profile={pendingProfile}
+        onComplete={handleCVComplete}
+      />
+    );
+  }
 
-      <div className="flex-1 overflow-hidden">
-        {activeTab === 'interview' && (
-          <InterviewPage
-            profile={profile}
-            onReset={handleReset}
-            onChangeProfile={handleChangeProfile}
-          />
-        )}
-        {activeTab === 'jobs' && (
-          <JobsPage profile={profile} />
-        )}
-        {activeTab === 'connections' && (
-          <ConnectionsPage userProfile={profile} />
-        )}
-        {activeTab === 'profile' && (
-          <ProfilePage profile={profile} onChangeProfile={handleChangeProfile} onUpdate={handleUpdateProfile} />
-        )}
+  // ── Main App ──
+  if (page === 'main' && profile) {
+    return (
+      <div className="h-screen flex flex-col overflow-hidden bg-[#F3F2EF]">
+        <AppHeader profile={profile} activeTab={activeTab} onTabChange={setActiveTab} />
+        <div className="flex-1 overflow-hidden">
+          {activeTab === 'interview' && (
+            <InterviewPage profile={profile} onReset={handleChangeProfile} onChangeProfile={handleChangeProfile} />
+          )}
+          {activeTab === 'jobs' && <JobsPage profile={profile} />}
+          {activeTab === 'connections' && <ConnectionsPage userProfile={profile} />}
+          {activeTab === 'profile' && (
+            <ProfilePage profile={profile} onChangeProfile={handleChangeProfile} onUpdate={handleUpdateProfile} />
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // Fallback (shouldn't happen)
+  return <LoginPage linkedinError={linkedinError} onClearLinkedinError={() => setLinkedinError(null)} />;
 }
