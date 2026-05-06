@@ -25,8 +25,8 @@ export function WhisperKeyModal({ onSave, onClose, currentKey }: WhisperKeyModal
       <div className="bg-white border border-gray-200 rounded-2xl p-7 w-full max-w-md shadow-xl animate-slide-up">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#EEF3F8] flex items-center justify-center">
-              <Key size={17} className="text-[#0A66C2]" />
+            <div className="w-9 h-9 rounded-xl bg-[#EEF2FF] flex items-center justify-center">
+              <Key size={17} className="text-[#4F46E5]" />
             </div>
             <h2 className="text-lg font-semibold text-gray-900">Transcription API Key</h2>
           </div>
@@ -54,12 +54,12 @@ export function WhisperKeyModal({ onSave, onClose, currentKey }: WhisperKeyModal
           value={key}
           onChange={e => setKey(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && key.trim() && handleSave()}
-          className="w-full bg-gray-50 border border-gray-300 focus:border-[#0A66C2] rounded-xl px-4 py-3 text-gray-900 text-sm outline-none placeholder:text-gray-400 mb-3 font-mono"
+          className="w-full bg-gray-50 border border-gray-300 focus:border-[#4F46E5] rounded-xl px-4 py-3 text-gray-900 text-sm outline-none placeholder:text-gray-400 mb-3 font-mono"
           autoFocus
         />
 
         {key && (
-          <p className={`text-sm mb-3 font-medium ${isGroq ? 'text-green-600' : isOpenAI ? 'text-[#0A66C2]' : 'text-gray-400'}`}>
+          <p className={`text-sm mb-3 font-medium ${isGroq ? 'text-green-600' : isOpenAI ? 'text-[#4F46E5]' : 'text-gray-400'}`}>
             {isGroq ? '✓ Groq key detected — routes to api.groq.com' :
              isOpenAI ? '✓ OpenAI key detected' :
              'Key format not recognised — should start with gsk_ or sk-'}
@@ -76,7 +76,7 @@ export function WhisperKeyModal({ onSave, onClose, currentKey }: WhisperKeyModal
             Cancel
           </button>
           <button onClick={handleSave} disabled={!key.trim()}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#0A66C2] hover:bg-[#004182] disabled:opacity-40 text-white rounded-xl text-sm font-semibold shadow-lg shadow-[#0A66C2]/20 transition-all">
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#4F46E5] hover:bg-[#3730a3] disabled:opacity-40 text-white rounded-xl text-sm font-semibold shadow-lg shadow-[#4F46E5]/20 transition-all">
             {saved ? <><CheckCircle2 size={15} /> Saved!</> : 'Save Key'}
           </button>
         </div>

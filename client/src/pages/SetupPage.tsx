@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import {
-  Briefcase, Zap, Target, Users, Loader2, Upload,
-  FileText, CheckCircle2, AlertCircle, Mic, Search,
+  Zap, Target, Users, Loader2, Upload,
+  FileText, CheckCircle2, AlertCircle, Mic, Search, Sparkles,
 } from 'lucide-react';
 import { CandidateProfile } from '../types';
 
@@ -13,18 +13,18 @@ const LINKEDIN_SVG = (
   </svg>
 );
 
-const BG_STYLE = { background: 'linear-gradient(135deg, #060b14 0%, #0c1929 60%, #07111e 100%)' };
+const BG_STYLE = { background: 'linear-gradient(135deg, #07050f 0%, #0f0b1e 55%, #0a0717 100%)' };
 
 function BgOrbs() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute -top-48 -left-48 w-[500px] h-[500px] rounded-full blur-3xl opacity-[0.12]"
-        style={{ background: 'radial-gradient(circle, #0A66C2, transparent 70%)' }} />
-      <div className="absolute top-1/2 -right-32 w-[400px] h-[400px] rounded-full blur-3xl opacity-[0.08]"
-        style={{ background: 'radial-gradient(circle, #0A66C2, transparent 70%)' }} />
-      <div className="absolute -bottom-32 left-1/3 w-[350px] h-[350px] rounded-full blur-3xl opacity-[0.07]"
-        style={{ background: 'radial-gradient(circle, #6366f1, transparent 70%)' }} />
-      <div className="absolute inset-0 opacity-[0.03]"
+      <div className="absolute -top-48 -left-48 w-[560px] h-[560px] rounded-full blur-3xl opacity-[0.14]"
+        style={{ background: 'radial-gradient(circle, #4F46E5, transparent 70%)' }} />
+      <div className="absolute top-1/2 -right-32 w-[420px] h-[420px] rounded-full blur-3xl opacity-[0.09]"
+        style={{ background: 'radial-gradient(circle, #7C3AED, transparent 70%)' }} />
+      <div className="absolute -bottom-32 left-1/3 w-[380px] h-[380px] rounded-full blur-3xl opacity-[0.08]"
+        style={{ background: 'radial-gradient(circle, #4F46E5, transparent 70%)' }} />
+      <div className="absolute inset-0 opacity-[0.025]"
         style={{ backgroundImage: 'linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)', backgroundSize: '60px 60px' }} />
     </div>
   );
@@ -33,11 +33,13 @@ function BgOrbs() {
 function Logo() {
   return (
     <div className="inline-flex items-center gap-3">
-      <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg shadow-[#0A66C2]/40"
-        style={{ background: 'linear-gradient(135deg, #0A66C2, #004182)' }}>
-        <Briefcase size={20} className="text-white" />
+      <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg"
+        style={{ background: 'linear-gradient(135deg, #4F46E5, #7C3AED)', boxShadow: '0 8px 24px rgba(79,70,229,0.4)' }}>
+        <Zap size={20} className="text-white" />
       </div>
-      <span className="text-white font-bold text-base tracking-tight">Interview Copilot</span>
+      <span className="text-white font-bold text-lg tracking-tight">
+        JobCracker<span className="text-indigo-400 font-normal text-sm">.in</span>
+      </span>
     </div>
   );
 }
@@ -45,10 +47,10 @@ function Logo() {
 // ─── Login Page ───────────────────────────────────────────────────────────────
 
 const FEATURES = [
-  { icon: Mic,    text: 'Real-time AI guidance during live interviews' },
-  { icon: Target, text: 'Job-tailored suggestions powered by your CV' },
-  { icon: Search, text: 'LinkedIn job search personalised to your profile' },
-  { icon: Users,  text: 'Network insights & smart connection messages' },
+  { icon: Mic,      text: 'Real-time AI coaching during live interviews' },
+  { icon: Target,   text: 'Job-tailored answers powered by your CV' },
+  { icon: Search,   text: 'LinkedIn job search personalised to your profile' },
+  { icon: Users,    text: 'Network insights & smart outreach messages' },
 ];
 
 interface LoginPageProps {
@@ -61,33 +63,45 @@ export function LoginPage({ linkedinError, onClearLinkedinError }: LoginPageProp
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-6" style={BG_STYLE}>
       <BgOrbs />
 
-      <div className="relative w-full max-w-5xl flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+      <div className="relative w-full max-w-5xl flex flex-col-reverse lg:flex-row items-center gap-8 lg:gap-16">
 
         {/* Left: Branding */}
         <div className="flex-1 text-center lg:text-left">
-          <div className="mb-8"><Logo /></div>
+          <div className="mb-6 hidden lg:block"><Logo /></div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-[1.08] tracking-tight mb-5">
-            Land your{' '}
-            <span className="block" style={{
-              background: 'linear-gradient(90deg,#3b9eff 0%,#60a5fa 50%,#93c5fd 100%)',
+          <h1 className="text-3xl sm:text-4xl lg:text-6xl font-black text-white leading-[1.06] tracking-tight mb-4"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            Crack every<br />
+            <span style={{
+              background: 'linear-gradient(90deg,#818cf8 0%,#a78bfa 50%,#c4b5fd 100%)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            }}>dream job</span>
-            with AI.
+            }}>interview.</span>
+            {' '}Land<br />any job.
           </h1>
 
-          <p className="text-slate-400 text-lg leading-relaxed mb-10 max-w-md mx-auto lg:mx-0">
-            Your intelligent interview coach — real-time guidance, tailored to who you are and the role you want.
+          <p className="text-slate-400 text-base lg:text-lg leading-relaxed mb-8 max-w-md mx-auto lg:mx-0">
+            AI-powered coaching, personalised job search, and real-time guidance — built for the modern job seeker.
           </p>
 
-          <div className="space-y-3.5">
+          <div className="hidden lg:block space-y-3.5">
             {FEATURES.map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-3.5 justify-center lg:justify-start">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border border-blue-500/20"
-                  style={{ background: 'rgba(10,102,194,0.15)' }}>
-                  <Icon size={15} className="text-blue-400" />
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border border-indigo-500/25"
+                  style={{ background: 'rgba(79,70,229,0.15)' }}>
+                  <Icon size={15} className="text-indigo-400" />
                 </div>
                 <span className="text-slate-300 text-sm">{text}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Mobile: compact feature pills */}
+          <div className="flex flex-wrap justify-center gap-2 lg:hidden">
+            {FEATURES.map(({ icon: Icon, text }) => (
+              <div key={text} className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-indigo-500/20"
+                style={{ background: 'rgba(79,70,229,0.1)' }}>
+                <Icon size={12} className="text-indigo-400 shrink-0" />
+                <span className="text-slate-400 text-xs">{text.split(' ').slice(0, 3).join(' ')}</span>
               </div>
             ))}
           </div>
@@ -95,14 +109,16 @@ export function LoginPage({ linkedinError, onClearLinkedinError }: LoginPageProp
 
         {/* Right: Login card */}
         <div className="w-full lg:w-[380px] shrink-0">
+          {/* Mobile logo */}
+          <div className="flex justify-center mb-6 lg:hidden"><Logo /></div>
           <div className="rounded-3xl p-8 border" style={{
             background: 'rgba(255,255,255,0.04)',
             backdropFilter: 'blur(28px)',
             borderColor: 'rgba(255,255,255,0.08)',
             boxShadow: '0 32px 80px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)',
           }}>
-            <h2 className="text-2xl font-bold text-white mb-1">Get started</h2>
-            <p className="text-slate-400 text-sm mb-8">Sign in to unlock your AI interview copilot</p>
+            <h2 className="text-2xl font-bold text-white mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Get started free</h2>
+            <p className="text-slate-400 text-sm mb-8">Sign in to unlock AI-powered interview coaching</p>
 
             {linkedinError && (
               <div className="flex items-start gap-2.5 p-3.5 mb-5 rounded-2xl border"
@@ -117,12 +133,12 @@ export function LoginPage({ linkedinError, onClearLinkedinError }: LoginPageProp
               href="/auth/linkedin"
               className="flex items-center justify-center gap-3 w-full py-4 rounded-2xl font-semibold text-white text-base transition-all duration-200 hover:scale-[1.02] active:scale-[0.99]"
               style={{
-                background: 'linear-gradient(135deg, #0A66C2 0%, #0958a8 100%)',
-                boxShadow: '0 8px 32px rgba(10,102,194,0.4)',
+                background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
+                boxShadow: '0 8px 32px rgba(79,70,229,0.4)',
               }}
             >
               {LINKEDIN_SVG}
-              Sign in with LinkedIn
+              Continue with LinkedIn
             </a>
 
             <p className="text-center text-xs text-slate-600 mt-5 leading-relaxed">
@@ -143,10 +159,10 @@ export function LoginPage({ linkedinError, onClearLinkedinError }: LoginPageProp
 // ─── CV Onboarding Page ───────────────────────────────────────────────────────
 
 const CV_BENEFITS = [
-  { icon: Mic,    label: 'Interview Assist',  desc: 'AI answers tailored to your exact background' },
-  { icon: Target, label: 'Job Matching',      desc: 'Surface roles that fit your skills & seniority' },
-  { icon: Zap,    label: 'Smart Suggestions', desc: 'Context-aware tips based on your experience' },
-  { icon: Users,  label: 'Network Outreach',  desc: 'Personalised messages that reference your story' },
+  { icon: Mic,      label: 'Interview Assist',  desc: 'Real-time AI answers tailored to your exact background' },
+  { icon: Target,   label: 'Job Matching',      desc: 'Surface roles that fit your skills & seniority' },
+  { icon: Sparkles, label: 'Smart Suggestions', desc: 'Context-aware tips based on your experience' },
+  { icon: Users,    label: 'Network Outreach',  desc: 'Personalised messages that reference your story' },
 ];
 
 type UploadState = 'idle' | 'dragging' | 'uploading' | 'success' | 'error';
@@ -214,9 +230,10 @@ export function CVOnboardingPage({ profile, onComplete }: CVOnboardingPageProps)
         <div className="flex items-center gap-3">
           {profile.photoUrl ? (
             <img src={profile.photoUrl} alt={profile.name}
-              className="w-12 h-12 rounded-full object-cover ring-2 ring-[#0A66C2]/40" />
+              className="w-12 h-12 rounded-full object-cover ring-2 ring-indigo-500/40" />
           ) : (
-            <div className="w-12 h-12 rounded-full bg-[#0A66C2] flex items-center justify-center ring-2 ring-[#0A66C2]/40">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center ring-2 ring-indigo-500/40"
+              style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)' }}>
               <span className="text-white font-bold">{initials}</span>
             </div>
           )}
@@ -235,20 +252,22 @@ export function CVOnboardingPage({ profile, onComplete }: CVOnboardingPageProps)
         }}>
           {/* Heading */}
           <div className="text-center mb-7">
-            <h2 className="text-2xl font-bold text-white mb-2">Upload your CV</h2>
+            <h2 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              One last step — upload your CV
+            </h2>
             <p className="text-slate-400 text-sm leading-relaxed max-w-md mx-auto">
-              To give you truly personalised AI assistance, we need your CV.
-              This powers every feature — from real-time interview coaching to smart job matching.
+              Your CV unlocks truly personalised AI assistance across every feature — from real-time interview coaching to smart job matching.
             </p>
           </div>
 
           {/* Benefits grid */}
-          <div className="grid grid-cols-2 gap-3 mb-7">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-7">
             {CV_BENEFITS.map(({ icon: Icon, label, desc }) => (
               <div key={label} className="flex items-start gap-3 p-3.5 rounded-2xl border"
-                style={{ background: 'rgba(10,102,194,0.08)', borderColor: 'rgba(10,102,194,0.18)' }}>
-                <div className="w-8 h-8 rounded-xl bg-[#0A66C2]/20 flex items-center justify-center shrink-0">
-                  <Icon size={15} className="text-blue-400" />
+                style={{ background: 'rgba(79,70,229,0.08)', borderColor: 'rgba(79,70,229,0.2)' }}>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: 'rgba(79,70,229,0.2)' }}>
+                  <Icon size={15} className="text-indigo-400" />
                 </div>
                 <div>
                   <p className="text-white text-xs font-semibold">{label}</p>
@@ -264,12 +283,12 @@ export function CVOnboardingPage({ profile, onComplete }: CVOnboardingPageProps)
             onDragLeave={() => setUploadState('idle')}
             onDrop={onDrop}
             onClick={() => uploadState === 'idle' || uploadState === 'error' ? fileInputRef.current?.click() : null}
-            className={`relative flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed py-10 px-6 cursor-pointer transition-all ${
-              uploadState === 'dragging'  ? 'border-[#0A66C2] bg-[#0A66C2]/10 scale-[1.01]' :
+            className={`relative flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed py-8 px-4 sm:py-10 sm:px-6 cursor-pointer transition-all ${
+              uploadState === 'dragging'  ? 'border-indigo-500 bg-indigo-500/10 scale-[1.01]' :
               uploadState === 'success'  ? 'border-emerald-500/50 bg-emerald-500/5 cursor-default' :
               uploadState === 'uploading' ? 'border-slate-600 bg-slate-800/30 cursor-wait' :
               uploadState === 'error'    ? 'border-red-500/40 bg-red-500/5 hover:border-red-400/60' :
-              'border-slate-700 hover:border-[#0A66C2]/60 hover:bg-[#0A66C2]/5'
+              'border-slate-700 hover:border-indigo-500/50 hover:bg-indigo-500/5'
             }`}
           >
             <input
@@ -282,7 +301,7 @@ export function CVOnboardingPage({ profile, onComplete }: CVOnboardingPageProps)
 
             {uploadState === 'uploading' && (
               <>
-                <Loader2 size={32} className="text-[#0A66C2] animate-spin" />
+                <Loader2 size={32} className="text-indigo-400 animate-spin" />
                 <p className="text-slate-300 font-medium text-sm">Parsing your CV…</p>
                 <p className="text-slate-500 text-xs">Extracting skills, experience & education</p>
               </>
@@ -307,10 +326,10 @@ export function CVOnboardingPage({ profile, onComplete }: CVOnboardingPageProps)
             {(uploadState === 'idle' || uploadState === 'dragging') && (
               <>
                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${
-                  uploadState === 'dragging' ? 'bg-[#0A66C2]/30' : 'bg-slate-800'
+                  uploadState === 'dragging' ? 'bg-indigo-500/30' : 'bg-slate-800'
                 }`}>
                   {uploadState === 'dragging'
-                    ? <Upload size={24} className="text-[#0A66C2]" />
+                    ? <Upload size={24} className="text-indigo-400" />
                     : <FileText size={24} className="text-slate-500" />
                   }
                 </div>

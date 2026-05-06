@@ -26,8 +26,8 @@ export function AudioIndicator({ isListening, isAnalyzing }: AudioIndicatorProps
         <span className="text-sm font-medium text-gray-800">{label}</span>
         {isAnalyzing && (
           <div className="flex items-center gap-1.5">
-            <Loader2 size={11} className="text-[#0A66C2] animate-spin" />
-            <span className="text-xs text-[#0A66C2]">Generating response</span>
+            <Loader2 size={11} className="text-[#4F46E5] animate-spin" />
+            <span className="text-xs text-[#4F46E5]">Generating response</span>
           </div>
         )}
       </div>

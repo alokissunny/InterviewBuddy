@@ -233,6 +233,160 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
   }
 });
 
+// ─── Gemini: single-shot audio → transcript + coaching ───────────────────────
+app.get('/api/interview/status', (_req, res) => {
+  res.json({ geminiAvailable: !!process.env.GEMINI_API_KEY });
+});
+
+app.post('/api/interview-chunk', upload.single('audio'), async (req, res) => {
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (!geminiKey) {
+    return res.status(401).json({ error: 'No Gemini API key. Add GEMINI_API_KEY to server/.env' });
+  }
+  if (!req.file) return res.status(400).json({ error: 'No audio file received' });
+
+  let profile = {};
+  try { profile = JSON.parse(req.body.profile || '{}'); } catch {}
+
+  const audioBase64 = req.file.buffer.toString('base64');
+  const mimeType = req.file.mimetype || 'audio/webm';
+
+  // Build candidate context for domain-aware transcription
+  const profileCtx = [
+    profile.name  && `Name: ${profile.name}`,
+    profile.title && `Role: ${profile.title}`,
+    (profile.skills || []).length  && `Skills: ${(profile.skills || []).slice(0, 25).join(', ')}`,
+    (profile.experience || []).length && `Experience: ${(profile.experience || []).slice(0, 3).map(e => `${e.role} at ${e.company}`).join('; ')}`,
+  ].filter(Boolean).join('\n');
+
+  const prompt = `You are a discreet AI interview coach. A candidate is in a live interview and needs real-time help.
+
+CANDIDATE PROFILE:
+${profileCtx}
+
+Listen to the audio and return this JSON:
+{
+  "transcript": "verbatim transcription of what was said",
+  "needsResponse": true,
+  "type": "Behavioral | Technical | Situational | Background | Other",
+  "keywords": ["keyword1", "keyword2"],
+  "pointers": [
+    {
+      "cue": "≤6 word cheat-sheet cue",
+      "detail": "2-3 sentence tactical guidance on exactly how to use this pointer in the answer"
+    }
+  ],
+  "avoid": "one specific thing to avoid for this exact question"
+}
+
+TRANSCRIPTION RULES:
+- Use the candidate's domain vocabulary (their skill names, company names, tech stack)
+- Set "needsResponse" TRUE ONLY when the audio clearly contains a full, coherent question or prompt directed at the candidate — at least 6 meaningful words of real speech
+- Set "needsResponse" FALSE for: silence, background noise, music, typing, breathing, filler words ("Okay", "Thanks", "Mm-hmm", "Sure"), or any audio where speech is unclear or absent
+- NEVER hallucinate or invent speech. If you cannot clearly hear a question, return an empty transcript and needsResponse: false
+- If audio contains fewer than 6 clearly audible words: set transcript to "" and needsResponse to false, return empty arrays for keywords and pointers
+
+COACHING RULES:
+
+RULE 1 — POINTERS (5-6 total, each has a cue AND a detail):
+- cue: ≤6 words — the at-a-glance cheat-sheet reminder shown on screen
+- detail: 2-3 sentences — tactical HOW-TO: how to structure this point, what to say, which example to open with
+- If question is about their background: cue references a specific company/project/tech; detail explains how to frame it
+    cue: "[Company X] — latency cut story"
+    detail: "Open with the scale of the problem, then name the specific architectural change you made. Close with the measurable result — latency cut, throughput gained, or incident rate reduced."
+- If question is general (weakness, motivation, salary, culture, hypothetical): cue gives the tactic; detail gives the script
+    cue: "Weakness → name it + what changed"
+    detail: "Name a real weakness without hedging. Then immediately pivot to one concrete thing you did about it — a course, a process change, a habit. The pivot is what shows self-awareness."
+- BANNED from cues: "Use STAR", "Be specific", "Quantify impact", "Show enthusiasm", "Be authentic"
+
+RULE 2 — KEYWORDS (5-7, question-specific answer triggers):
+- Keywords are the exact words/phrases the candidate MUST say in their answer to this question
+- They are NOT profile skills repeated back — they are answer-quality signals for THIS question
+- Ask: "What words would a strong answer to THIS question contain?"
+    Q: "Tell me about a conflict" → keywords: de-escalation, shared goal, direct conversation, outcome, learned
+    Q: "Why this company?" → keywords: [specific product/mission], growth trajectory, team fit, long-term
+    Q: "Design a rate limiter" → keywords: token bucket, sliding window, Redis, distributed, failure mode
+    Q: "Biggest weakness?" → keywords: self-aware, concrete action, measurable progress, ongoing
+- NEVER output the candidate's generic skills list as keywords
+
+RULE 3 — AVOID:
+- One sharp, question-specific mistake — not "being too vague"
+    ✓ "Don't pick a weakness that sounds like a strength"
+    ✓ "Don't start with context — lead with the decision"
+
+Return ONLY valid JSON — no markdown, no explanation`;
+
+  try {
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [
+            { inline_data: { mime_type: mimeType, data: audioBase64 } },
+            { text: prompt },
+          ]}],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 3000,
+            thinkingConfig: { thinkingBudget: 0 }, // disable thinking — we need all tokens for JSON output
+          },
+        }),
+      }
+    );
+
+    const geminiData = await geminiRes.json();
+
+    if (!geminiRes.ok) {
+      const msg = geminiData.error?.message || `Gemini error ${geminiRes.status}`;
+      console.error('[Gemini]', msg);
+      return res.status(geminiRes.status).json({ error: msg });
+    }
+
+    // With thinking disabled there's one part; pick the last text part as safety
+    const parts = geminiData.candidates?.[0]?.content?.parts || [];
+    const textPart = [...parts].reverse().find(p => typeof p.text === 'string');
+    let raw = textPart?.text?.trim() || '';
+    // Strip markdown fences if model wraps response
+    raw = raw.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      console.error('[Gemini] JSON parse failed, raw:', raw.slice(0, 200));
+      return res.status(500).json({ error: 'Gemini returned malformed JSON' });
+    }
+
+    const transcript = (parsed.transcript || '').trim();
+    const wordCount  = transcript.split(/\s+/).filter(Boolean).length;
+
+    // Hard gate: fewer than 6 real words means silence/noise — suppress coaching entirely
+    // This prevents Gemini hallucinations when no interview audio is playing
+    const needsResponse = wordCount >= 6 && !!parsed.needsResponse;
+
+    console.log('[Gemini] transcript:', `"${transcript.slice(0, 80)}"`, `(${wordCount} words)`);
+    console.log('[Gemini] needsResponse:', needsResponse, '| type:', parsed.type || '—');
+    if (needsResponse) {
+      console.log('[Gemini] keywords:', (parsed.keywords || []).join(', '));
+      console.log('[Gemini] pointers:', (parsed.pointers || []).length, 'items');
+    }
+
+    res.json({
+      transcript,
+      needsResponse,
+      type:     needsResponse ? (parsed.type  || '') : '',
+      keywords: needsResponse ? (Array.isArray(parsed.keywords) ? parsed.keywords : []) : [],
+      pointers: needsResponse ? (Array.isArray(parsed.pointers) ? parsed.pointers : []) : [],
+      avoid:    needsResponse ? (parsed.avoid || '') : '',
+    });
+  } catch (err) {
+    console.error('[Gemini] fetch error:', err.message);
+    res.status(500).json({ error: err.message || 'Gemini processing failed' });
+  }
+});
+
 // ─── Claude Analysis (streaming) ─────────────────────────────────────────────
 app.post('/api/analyze', async (req, res) => {
   const { transcript, profile, conversationHistory = [] } = req.body;
@@ -882,7 +1036,8 @@ As an expert interview coach:
    ✓ Good: "How do you handle a stakeholder who keeps changing requirements mid-sprint?"
    ✓ Good: "Walk me through a production incident you owned end to end."
    The interviewer will ask natural follow-up questions based on the candidate's answers — do not try to cover everything in one question.
-7. Write a short HINT (under 12 words) — what angle a strong answer takes.
+7. NEVER address the candidate by name in the question text. No "So, [Name], tell me..." or "Tell me, [Name], about...". Ask directly.
+8. Write a short HINT (under 12 words) — what angle a strong answer takes.
 
 Return ONLY valid JSON, no markdown fences:
 {
@@ -940,6 +1095,7 @@ Ask ONE short follow-up question (under 20 words) that:
 - Sounds like a real human interviewer, not a bot
 - Does NOT start with "That's great" or any affirmation
 - Does NOT repeat what they said back to them
+- Does NOT address the candidate by name
 
 Return ONLY the question text — no quotes, no labels, nothing else.`;
 

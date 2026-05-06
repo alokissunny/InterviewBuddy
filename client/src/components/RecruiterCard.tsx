@@ -12,7 +12,7 @@ export interface Recruiter {
 }
 
 const degreeBadge: Record<string, string> = {
-  '1st': 'bg-[#EEF3F8] text-[#0A66C2] border border-[#0A66C2]/30',
+  '1st': 'bg-[#EEF2FF] text-[#4F46E5] border border-[#4F46E5]/30',
   '2nd': 'bg-violet-500/10 text-violet-600 border border-violet-500/20',
   '3rd+': 'bg-gray-100 text-gray-500 border border-gray-200',
 };
@@ -50,7 +50,7 @@ export function RecruiterCard({ recruiter }: { recruiter: Recruiter }) {
           href={recruiter.profileUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-[#0A66C2] hover:bg-[#004182] text-white text-xs font-semibold rounded-lg transition-colors shadow-md shadow-[#0A66C2]/20"
+          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-[#4F46E5] hover:bg-[#3730a3] text-white text-xs font-semibold rounded-lg transition-colors shadow-md shadow-[#4F46E5]/20"
         >
           <ExternalLink size={12} />
           View

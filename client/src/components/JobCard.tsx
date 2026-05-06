@@ -74,7 +74,7 @@ export function JobCard({ job, profile }: JobCardProps) {
               <p className="text-gray-500 text-sm">{job.company}</p>
               {job.sourceLabel && (
                 <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${
-                  job.source === 'linkedin' ? 'bg-[#EEF3F8] text-[#0A66C2]' :
+                  job.source === 'linkedin' ? 'bg-[#EEF2FF] text-[#4F46E5]' :
                   job.source === 'remotive' ? 'bg-green-50 text-green-700' :
                   job.source === 'arbeitnow' ? 'bg-orange-50 text-orange-700' :
                   'bg-purple-50 text-purple-700'
@@ -91,7 +91,7 @@ export function JobCard({ job, profile }: JobCardProps) {
               href={job.applyUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#0A66C2] hover:bg-[#004182] text-white text-sm font-semibold rounded-xl shadow-md shadow-[#0A66C2]/20 transition-all shrink-0"
+              className="flex items-center gap-1.5 px-4 py-2 bg-[#4F46E5] hover:bg-[#3730a3] text-white text-sm font-semibold rounded-xl shadow-md shadow-[#4F46E5]/20 transition-all shrink-0"
             >
               Apply <ExternalLink size={13} />
             </a>
@@ -180,7 +180,7 @@ export function JobCard({ job, profile }: JobCardProps) {
 
           <button
             onClick={() => setShowMockInterview(true)}
-            className="flex items-center gap-2 text-sm text-[#0A66C2] hover:text-[#004182] transition-colors font-medium"
+            className="flex items-center gap-2 text-sm text-[#4F46E5] hover:text-[#3730a3] transition-colors font-medium"
           >
             <Zap size={14} /> Mock Interview
           </button>

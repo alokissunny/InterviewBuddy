@@ -3,7 +3,7 @@ import { Upload, Search, X, Users, Briefcase, Code2, UserCheck, Building2, Chevr
 import { Connection, ConnectionCard } from '../components/ConnectionCard';
 import { CandidateProfile } from '../types';
 
-const STORAGE_KEY = 'interview_copilot_connections';
+const STORAGE_KEY = 'jobcracker_connections';
 const PAGE_SIZE = 50;
 
 // Keywords for each category
@@ -141,11 +141,11 @@ export function ConnectionsPage({ userProfile }: { userProfile: CandidateProfile
   // Upload / empty state
   if (!connections.length) {
     return (
-      <div className="h-full flex flex-col items-center justify-center bg-[#F3F2EF] p-8">
+      <div className="h-full flex flex-col items-center justify-center bg-[#F3F2EF] p-4 sm:p-8 overflow-y-auto">
         <div className="w-full max-w-lg">
           <div className="text-center mb-8">
-            <div className="w-14 h-14 rounded-2xl bg-[#EEF3F8] flex items-center justify-center mx-auto mb-4">
-              <Users size={28} className="text-[#0A66C2]" />
+            <div className="w-14 h-14 rounded-2xl bg-[#EEF2FF] flex items-center justify-center mx-auto mb-4">
+              <Users size={28} className="text-[#4F46E5]" />
             </div>
             <h2 className="text-gray-900 font-bold text-xl">Import LinkedIn Connections</h2>
             <p className="text-gray-500 text-sm mt-2">Upload your connections.csv to browse and filter your network</p>
@@ -156,12 +156,12 @@ export function ConnectionsPage({ userProfile }: { userProfile: CandidateProfile
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all ${
-              isDragging ? 'border-[#0A66C2] bg-[#EEF3F8]' : 'border-gray-300 bg-white hover:border-[#0A66C2]/50 hover:bg-[#EEF3F8]/40'
+            className={`border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center cursor-pointer transition-all ${
+              isDragging ? 'border-[#4F46E5] bg-[#EEF2FF]' : 'border-gray-300 bg-white hover:border-[#4F46E5]/50 hover:bg-[#EEF2FF]/40'
             }`}
           >
             <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
-            <Upload size={32} className={`mx-auto mb-4 ${isDragging ? 'text-[#0A66C2]' : 'text-gray-400'}`} />
+            <Upload size={32} className={`mx-auto mb-4 ${isDragging ? 'text-[#4F46E5]' : 'text-gray-400'}`} />
             <p className="text-gray-700 font-semibold">Drop connections.csv here</p>
             <p className="text-gray-400 text-sm mt-1">or click to browse</p>
           </div>
@@ -191,34 +191,45 @@ export function ConnectionsPage({ userProfile }: { userProfile: CandidateProfile
   return (
     <div className="h-full flex flex-col overflow-hidden bg-[#F3F2EF]">
       {/* Search + filter bar */}
-      <div className="shrink-0 px-6 py-4 bg-white border-b border-gray-200 shadow-sm">
-        <div className="flex gap-3 items-center flex-wrap">
-          {/* Search */}
-          <div className="relative flex-1 min-w-[220px]">
-            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            <input
-              value={search}
-              onChange={e => { setSearch(e.target.value); setVisibleCount(PAGE_SIZE); }}
-              placeholder="Search by name, company, or role…"
-              className="w-full pl-9 pr-9 py-2.5 bg-gray-50 border border-gray-300 focus:border-[#0A66C2] rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors"
-            />
-            {search && (
-              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                <X size={14} />
-              </button>
-            )}
+      <div className="shrink-0 px-4 py-3 bg-white border-b border-gray-200 shadow-sm">
+        <div className="flex flex-col gap-2.5">
+          {/* Search + re-upload row */}
+          <div className="flex gap-2 items-center">
+            <div className="relative flex-1 min-w-0">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input
+                value={search}
+                onChange={e => { setSearch(e.target.value); setVisibleCount(PAGE_SIZE); }}
+                placeholder="Search by name, company, or role…"
+                className="w-full pl-9 pr-9 py-2.5 bg-gray-50 border border-gray-300 focus:border-[#4F46E5] rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 border border-gray-200 hover:border-gray-300 rounded-xl transition-colors bg-white shrink-0"
+            >
+              <Upload size={13} />
+              <span className="hidden sm:inline">Replace file</span>
+            </button>
+            <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
           </div>
 
-          {/* Category chips */}
-          <div className="flex gap-1.5 flex-wrap">
+          {/* Category chips — horizontally scrollable on mobile */}
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
             {FILTER_OPTIONS.map(f => (
               <button
                 key={f.id}
                 onClick={() => { setActiveFilter(f.id); setVisibleCount(PAGE_SIZE); }}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all border ${
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all border shrink-0 ${
                   activeFilter === f.id
-                    ? 'bg-[#0A66C2] text-white border-[#0A66C2] shadow-sm'
-                    : 'bg-white text-gray-600 border-gray-300 hover:border-[#0A66C2]/50 hover:text-[#0A66C2]'
+                    ? 'bg-[#4F46E5] text-white border-[#4F46E5] shadow-sm'
+                    : 'bg-white text-gray-600 border-gray-300 hover:border-[#4F46E5]/50 hover:text-[#4F46E5]'
                 }`}
               >
                 {f.icon}
@@ -229,20 +240,11 @@ export function ConnectionsPage({ userProfile }: { userProfile: CandidateProfile
               </button>
             ))}
           </div>
-
-          {/* Re-upload */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 border border-gray-200 hover:border-gray-300 rounded-xl transition-colors bg-white"
-          >
-            <Upload size={13} /> Replace file
-          </button>
-          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
         </div>
       </div>
 
       {/* Results */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="flex-1 overflow-y-auto px-4 py-4">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
             <Users size={40} className="opacity-30" />

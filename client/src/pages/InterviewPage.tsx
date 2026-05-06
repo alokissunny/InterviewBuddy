@@ -1,17 +1,8 @@
-import React, { useState, useCallback, useRef } from 'react';
-import {
-  RotateCcw, User, ChevronDown, ChevronUp,
-  Zap, MonitorOff, AlertCircle, Info, Settings, LogOut, Radio,
-} from 'lucide-react';
-import { CandidateProfile, TranscriptEntry } from '../types';
-import { useSystemAudioCapture } from '../hooks/useSystemAudioCapture';
-import { useAnalysis } from '../hooks/useAnalysis';
-import { AudioIndicator } from '../components/AudioIndicator';
-import { TranscriptPanel } from '../components/TranscriptPanel';
-import { ResponsePanel } from '../components/ResponsePanel';
-import { WhisperKeyModal } from '../components/WhisperKeyModal';
-
-const WHISPER_KEY_STORAGE = 'interview_copilot_whisper_key';
+import React, { useState, useCallback } from 'react';
+import { MonitorOff, AlertCircle, Radio, Sparkles, Mic, Activity, Waves } from 'lucide-react';
+import { CandidateProfile } from '../types';
+import { useGeminiCapture, CoachingResult } from '../hooks/useGeminiCapture';
+import { ResponsePanel, CoachingEntry } from '../components/ResponsePanel';
 
 interface InterviewPageProps {
   profile: CandidateProfile;
@@ -19,277 +10,223 @@ interface InterviewPageProps {
   onChangeProfile: () => void;
 }
 
-export function InterviewPage({ profile, onReset, onChangeProfile }: InterviewPageProps) {
-  const [autoAnalyze, setAutoAnalyze] = useState(true);
-  const [showProfile, setShowProfile] = useState(false);
-  const [sessionStart] = useState(new Date());
-  const [elapsed, setElapsed] = useState('00:00');
-  const [captureNotice, setCaptureNotice] = useState<string | null>(null);
-  const [showKeyModal, setShowKeyModal] = useState(false);
-  const [whisperKey, setWhisperKey] = useState(() => localStorage.getItem(WHISPER_KEY_STORAGE) || '');
-  const [entries, setEntries] = useState<TranscriptEntry[]>([]);
-  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+export function InterviewPage({ profile }: InterviewPageProps) {
+  const [coachingHistory, setCoachingHistory] = useState<CoachingEntry[]>([]);
+  const [captureNotice,   setCaptureNotice]   = useState<string | null>(null);
 
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      const diff = Math.floor((Date.now() - sessionStart.getTime()) / 1000);
-      const m = String(Math.floor(diff / 60)).padStart(2, '0');
-      const s = String(diff % 60).padStart(2, '0');
-      setElapsed(`${m}:${s}`);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [sessionStart]);
-
-  const { response, rawResponse, isAnalyzing, error, analyze } = useAnalysis(profile);
-
-  const addInterviewerEntry = useCallback((text: string) => {
-    const entry: TranscriptEntry = {
-      id: `${Date.now()}-${Math.random()}`,
-      text,
-      timestamp: new Date(),
-      isInterim: false,
-      speaker: 'interviewer',
-    };
-    setEntries(prev => [...prev, entry]);
-
-    if (autoAnalyze && text.trim().length > 15) {
-      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-      silenceTimerRef.current = setTimeout(() => analyze(text), 2500);
-    }
-  }, [autoAnalyze, analyze]);
-
-  const clearEntries = useCallback(() => setEntries([]), []);
-  const updateEntry = useCallback((id: string, text: string) => {
-    setEntries(prev => prev.map(e => e.id === id ? { ...e, text } : e));
+  const handleTranscript = useCallback((_text: string) => {
+    // transcript consumed internally; not displayed
   }, []);
 
-  // Tab audio only — captures the interviewer's voice from a chosen browser tab
-  const {
-    isCapturing: sysCapturing,
-    isTranscribing: sysTranscribing,
-    serverHasKey,
-    startCapture: startSys,
-    stopCapture: stopSys,
-  } = useSystemAudioCapture(addInterviewerEntry, whisperKey, (errType, msg) => {
-    setCaptureNotice(msg);
-    if (errType === 'no-api-key') setShowKeyModal(true);
-    else setTimeout(() => setCaptureNotice(null), 8000);
-  });
+  const handleCoaching = useCallback((result: CoachingResult, question: string) => {
+    setCoachingHistory(prev => [...prev, {
+      id: `${Date.now()}-${Math.random()}`,
+      question,
+      result,
+      timestamp: new Date(),
+    }]);
+  }, []);
 
-  const isActive = sysCapturing;
-  const needsKey = serverHasKey === false && !whisperKey;
+  const { isCapturing, isProcessing, geminiAvailable, startCapture, stopCapture } =
+    useGeminiCapture(profile, handleTranscript, handleCoaching, (msg) => {
+      setCaptureNotice(msg);
+      setTimeout(() => setCaptureNotice(null), 8000);
+    });
 
-  const handleStart = useCallback(async () => { await startSys(); }, [startSys]);
-  const handleStop  = useCallback(() => { stopSys(); }, [stopSys]);
-
-  const handleSaveKey = (key: string) => {
-    setWhisperKey(key);
-    localStorage.setItem(WHISPER_KEY_STORAGE, key);
-    setShowKeyModal(false);
-    setCaptureNotice(null);
-  };
-
-  const statusMessage = () => {
-    if (isActive) {
-      return `Capturing tab audio${sysTranscribing ? ' · transcribing…' : ''}`;
-    }
-    if (needsKey) return null;
-    return 'Click Start Listening — pick the browser tab playing your interview';
-  };
+  const noGemini = geminiAvailable === false;
+  const totalPointers = coachingHistory.reduce((n, e) => n + e.result.pointers.length, 0);
 
   return (
     <div className="h-full bg-[#F3F2EF] flex flex-col overflow-hidden">
-      {/* Session sub-toolbar */}
-      <div className="flex items-center justify-between px-5 py-2 bg-white border-b border-gray-100 shrink-0">
-        {/* Left: live status */}
-        <div className="flex items-center gap-3">
-          <AudioIndicator isListening={isActive} isAnalyzing={isAnalyzing || sysTranscribing} />
-          <div className="w-px h-4 bg-gray-200" />
-          <span className="font-mono text-xs text-gray-400 tabular-nums">{elapsed}</span>
+
+      {/* No Gemini key banner */}
+      {noGemini && (
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 border-b border-amber-200 shrink-0">
+          <AlertCircle size={14} className="text-amber-600 shrink-0" />
+          <p className="text-amber-700 text-xs">
+            Add <code className="font-mono bg-amber-100 px-1 rounded">GEMINI_API_KEY</code> to{' '}
+            <code className="font-mono bg-amber-100 px-1 rounded">server/.env</code> to enable AI coaching.{' '}
+            Get a free key at{' '}
+            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer"
+              className="underline hover:text-amber-900">aistudio.google.com</a>
+          </p>
+        </div>
+      )}
+
+      {/* Error banner */}
+      {captureNotice && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 shrink-0">
+          <AlertCircle size={14} className="text-amber-600 shrink-0" />
+          <p className="text-amber-600 text-xs flex-1">{captureNotice}</p>
+          <button onClick={() => setCaptureNotice(null)} className="text-amber-600 hover:text-amber-700 text-xs">✕</button>
+        </div>
+      )}
+
+      {/* Mobile status strip — visible only on small screens */}
+      <div className="md:hidden shrink-0 flex items-center gap-3 px-4 py-2.5 bg-white border-b border-gray-200">
+        {/* Mic indicator */}
+        <div className="relative flex items-center justify-center">
+          {isCapturing && (
+            <span className="absolute w-9 h-9 rounded-full bg-indigo-500/15 animate-ping" />
+          )}
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center shadow-sm relative ${
+            isCapturing ? 'bg-indigo-600' : 'bg-gray-200'
+          }`}>
+            <Mic size={14} className={isCapturing ? 'text-white' : 'text-gray-400'} />
+          </div>
         </div>
 
-        {/* Right: controls */}
-        <div className="flex items-center gap-1">
-          {/* Auto-analyze toggle */}
-          <label className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:bg-gray-50 cursor-pointer select-none transition-colors">
-            <div
-              onClick={() => setAutoAnalyze(v => !v)}
-              className={`w-7 h-3.5 rounded-full transition-colors relative shrink-0 ${autoAnalyze ? 'bg-[#0A66C2]' : 'bg-gray-200'}`}
-            >
-              <div className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white shadow transition-transform ${autoAnalyze ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-            </div>
-            Auto-analyze
-          </label>
+        {/* Status text */}
+        <div className="flex-1 min-w-0">
+          {isCapturing && isProcessing && (
+            <p className="text-xs font-semibold text-indigo-600">Analysing question…</p>
+          )}
+          {isCapturing && !isProcessing && (
+            <p className="text-xs font-semibold text-green-600">Listening · waiting for question</p>
+          )}
+          {!isCapturing && (
+            <p className="text-xs text-gray-400">Tap Start Listening to begin</p>
+          )}
+        </div>
 
-          <div className="w-px h-4 bg-gray-100" />
-
-          {/* Profile drawer */}
-          <button
-            onClick={() => setShowProfile(v => !v)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              showProfile ? 'bg-[#EEF3F8] text-[#0A66C2]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
-            }`}
-          >
-            <User size={13} />
-            Profile
-            {showProfile ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-          </button>
-
-          {/* Change profile */}
-          <button
-            onClick={onChangeProfile}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-colors"
-          >
-            <LogOut size={13} />
-            Switch Profile
-          </button>
-
-          {/* Reset session */}
-          <button
-            onClick={onReset}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:bg-red-50 hover:text-red-500 transition-colors"
-          >
-            <RotateCcw size={13} />
-            Reset
-          </button>
+        {/* Session counts */}
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-1 text-xs text-gray-500">
+            <Activity size={12} className="text-indigo-400" />
+            <span className="font-bold text-gray-700">{coachingHistory.length}</span>
+          </div>
+          <div className="flex items-center gap-1 text-xs text-gray-500">
+            <Waves size={12} className="text-green-400" />
+            <span className="font-bold text-gray-700">{totalPointers}</span>
+          </div>
         </div>
       </div>
 
-      {/* Profile dropdown */}
-      {showProfile && (
-        <div className="px-4 py-3 bg-white border-b border-gray-200 animate-slide-up">
-          <div className="flex flex-wrap gap-4 text-xs">
-            <div>
-              <span className="text-gray-400 uppercase tracking-wide">Role</span>
-              <p className="text-gray-800 mt-0.5">{profile.title}</p>
-            </div>
-            <div>
-              <span className="text-gray-400 uppercase tracking-wide">Skills</span>
-              <div className="flex flex-wrap gap-1 mt-0.5">
-                {profile.skills?.slice(0, 8).map(s => (
-                  <span key={s} className="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">{s}</span>
-                ))}
-                {(profile.skills?.length ?? 0) > 8 && <span className="text-gray-400">+{profile.skills.length - 8}</span>}
+      {/* Main panels */}
+      <div className="flex-1 flex flex-col md:flex-row gap-3 p-3 md:gap-4 md:p-4 overflow-hidden min-h-0">
+
+        {/* Listening status sidebar — desktop only */}
+        <div className="hidden md:flex w-52 shrink-0 flex-col gap-3">
+          {/* Status card */}
+          <div className="card p-4 flex flex-col items-center gap-4 text-center">
+            <div className="relative flex items-center justify-center mt-2">
+              {isCapturing && (
+                <>
+                  <span className="absolute w-20 h-20 rounded-full bg-indigo-500/10 animate-ping" />
+                  <span className="absolute w-14 h-14 rounded-full bg-indigo-500/15 animate-ping" style={{ animationDelay: '0.3s' }} />
+                </>
+              )}
+              <div className={`relative w-12 h-12 rounded-full flex items-center justify-center shadow-md ${
+                isCapturing ? 'bg-indigo-600' : 'bg-gray-200'
+              }`}>
+                <Mic size={22} className={isCapturing ? 'text-white' : 'text-gray-400'} />
               </div>
             </div>
-            {profile.experience?.[0] && (
-              <div>
-                <span className="text-gray-400 uppercase tracking-wide">Latest Role</span>
-                <p className="text-gray-800 mt-0.5">{profile.experience[0].role} at {profile.experience[0].company}</p>
+
+            {isCapturing && isProcessing && (
+              <div className="space-y-0.5">
+                <p className="text-xs font-semibold text-indigo-600">Analysing…</p>
+                <p className="text-[10px] text-indigo-400">Question detected</p>
               </div>
             )}
+            {isCapturing && !isProcessing && (
+              <div className="space-y-0.5">
+                <p className="text-xs font-semibold text-green-600">Listening</p>
+                <p className="text-[10px] text-gray-400">Waiting for question</p>
+              </div>
+            )}
+            {!isCapturing && (
+              <div className="space-y-0.5">
+                <p className="text-xs font-semibold text-gray-500">Not active</p>
+                <p className="text-[10px] text-gray-400">Press Start Listening</p>
+              </div>
+            )}
+
+            {/* Audio level bars */}
+            <div className="flex items-end gap-1 h-6">
+              {[3, 5, 8, 6, 4, 7, 5, 3, 6, 4].map((h, i) => (
+                <div
+                  key={i}
+                  className={`w-1 rounded-full transition-all ${isCapturing ? 'bg-indigo-400' : 'bg-gray-200'}`}
+                  style={{
+                    height: isCapturing ? `${h * 3}px` : '4px',
+                    animation: isCapturing ? `pulse ${0.4 + i * 0.07}s ease-in-out infinite alternate` : 'none',
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Session stats */}
+          <div className="card p-3 space-y-3">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Session</p>
+            <div className="flex items-center gap-2">
+              <Activity size={13} className="text-indigo-400 shrink-0" />
+              <div>
+                <p className="text-sm font-bold text-gray-800">{coachingHistory.length}</p>
+                <p className="text-[10px] text-gray-400">Questions detected</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Waves size={13} className="text-green-400 shrink-0" />
+              <div>
+                <p className="text-sm font-bold text-gray-800">{totalPointers}</p>
+                <p className="text-[10px] text-gray-400">Pointers generated</p>
+              </div>
+            </div>
           </div>
         </div>
-      )}
 
-      {/* Notice banner */}
-      {captureNotice && !showKeyModal && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 animate-slide-up shrink-0">
-          <AlertCircle size={14} className="text-amber-600 shrink-0" />
-          <p className="text-amber-600 text-xs flex-1">{captureNotice}</p>
-          <button onClick={() => setCaptureNotice(null)} className="text-amber-600 hover:text-amber-700 text-xs ml-2">✕</button>
-        </div>
-      )}
-
-      {/* Main content */}
-      <div className="flex-1 flex gap-4 p-4 overflow-hidden min-h-0">
-        <div className="w-2/5 flex flex-col overflow-hidden">
-          <TranscriptPanel
-            entries={entries}
-            interimText=""
-            onAnalyze={analyze}
-            onClear={clearEntries}
-            onUpdateEntry={updateEntry}
-            isAnalyzing={isAnalyzing}
-          />
-        </div>
-        <div className="flex-1 flex flex-col overflow-hidden">
+        {/* AI Coach panel — full remaining width */}
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
           <ResponsePanel
-            response={response}
-            rawResponse={rawResponse}
-            isAnalyzing={isAnalyzing}
-            error={error}
+            history={coachingHistory}
+            isAnalyzing={isProcessing}
+            error={null}
           />
         </div>
       </div>
 
       {/* Bottom bar */}
-      <div className="flex items-center justify-between px-5 py-3.5 bg-white border-t border-gray-200 shrink-0">
-        {/* Status */}
-        <div className="flex flex-col gap-1 min-w-0">
-          {needsKey && (
-            <p className="text-sm text-amber-600 flex items-center gap-1.5">
-              <AlertCircle size={13} />
-              Transcription API key required —
-              <button onClick={() => setShowKeyModal(true)} className="underline hover:text-amber-700">add key</button>
-            </p>
+      <div className="flex items-center justify-between px-4 py-3 md:px-5 md:py-3.5 bg-white border-t border-gray-200 shrink-0 gap-3">
+        <div className="flex items-center gap-2 text-sm min-w-0 flex-1">
+          {isCapturing && isProcessing && (
+            <span className="flex items-center gap-1.5 text-indigo-600 truncate">
+              <Sparkles size={13} className="animate-pulse shrink-0" />
+              <span className="hidden sm:inline">Listening · analysing…</span>
+              <span className="sm:hidden">Analysing…</span>
+            </span>
           )}
-          {!needsKey && (serverHasKey || whisperKey) && (
-            <p className="text-sm text-gray-400 flex items-center gap-1.5">
-              <Info size={13} className="text-[#0A66C2]" />
-              {whisperKey
-                ? (whisperKey.startsWith('gsk_') ? 'Using Groq Whisper (free)' : 'Using your OpenAI key')
-                : 'Using server OpenAI key'}
-              {' · '}
-              <button onClick={() => setShowKeyModal(true)} className="underline hover:text-gray-600">change</button>
-            </p>
+          {isCapturing && !isProcessing && (
+            <span className="flex items-center gap-1.5 text-green-600 truncate">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
+              <span className="hidden sm:inline">Capturing tab audio</span>
+              <span className="sm:hidden text-xs">Live</span>
+            </span>
           )}
-          {statusMessage() && (
-            <p className={`text-sm ${isActive ? 'text-green-600' : 'text-gray-400'}`}>
-              {statusMessage()}
-            </p>
+          {!isCapturing && !noGemini && (
+            <span className="text-gray-400 text-xs sm:text-sm truncate">
+              <span className="hidden sm:inline">Click Start Listening — pick the browser tab playing your interview</span>
+              <span className="sm:hidden">Pick the interview tab</span>
+            </span>
           )}
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
-          {/* API key settings */}
-          {!isActive && (
-            <button
-              onClick={() => setShowKeyModal(true)}
-              className="p-2.5 text-gray-500 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-xl border border-gray-200 transition-all"
-              title="Transcription API key"
-            >
-              <Settings size={16} />
-            </button>
-          )}
-
-          {/* Manual analyze */}
-          {entries.length > 0 && !autoAnalyze && (
-            <button
-              onClick={() => analyze(entries.slice(-5).map(e => e.text).join(' '))}
-              disabled={isAnalyzing}
-              className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-800 text-sm font-medium rounded-xl border border-gray-300 transition-all"
-            >
-              <Zap size={15} /> Analyze
-            </button>
-          )}
-
-          {/* Start / Stop */}
-          <button
-            onClick={isActive ? handleStop : handleStart}
-            disabled={!isActive && needsKey}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-              isActive
-                ? 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-500/25'
-                : 'bg-[#0A66C2] hover:bg-[#004182] text-white shadow-lg shadow-[#0A66C2]/25'
-            }`}
-          >
-            {isActive
-              ? <><MonitorOff size={16} /> Stop</>
-              : <><Radio size={16} /> Start Listening</>
-            }
-          </button>
-        </div>
+        <button
+          onClick={isCapturing ? stopCapture : startCapture}
+          disabled={noGemini}
+          className={`flex items-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl font-semibold text-sm transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed ${
+            isCapturing
+              ? 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-500/25'
+              : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/25'
+          }`}
+        >
+          {isCapturing
+            ? <><MonitorOff size={16} /> <span>Stop</span></>
+            : <><Radio size={16} /> <span className="hidden sm:inline">Start Listening</span><span className="sm:hidden">Start</span></>
+          }
+        </button>
       </div>
-
-      {/* Whisper key modal */}
-      {showKeyModal && (
-        <WhisperKeyModal
-          currentKey={whisperKey}
-          onSave={handleSaveKey}
-          onClose={() => setShowKeyModal(false)}
-        />
-      )}
     </div>
   );
 }

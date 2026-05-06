@@ -11,8 +11,8 @@ interface ProfilePageProps {
   onUpdate: (p: CandidateProfile) => void;
 }
 
-const inp = 'w-full bg-gray-50 border border-gray-300 focus:border-[#0A66C2] rounded-xl px-3.5 py-2.5 text-base text-gray-900 outline-none placeholder:text-gray-400 transition-colors';
-const smInp = 'bg-gray-50 border border-gray-300 focus:border-[#0A66C2] rounded-lg px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 transition-colors';
+const inp = 'w-full bg-gray-50 border border-gray-300 focus:border-[#4F46E5] rounded-xl px-3.5 py-2.5 text-base text-gray-900 outline-none placeholder:text-gray-400 transition-colors';
+const smInp = 'bg-gray-50 border border-gray-300 focus:border-[#4F46E5] rounded-lg px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 transition-colors';
 
 function Section({
   icon, title, editing, onEdit, onSave, onCancel, children,
@@ -25,7 +25,7 @@ function Section({
     <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2.5">
-          <span className="text-[#0A66C2]">{icon}</span>
+          <span className="text-[#4F46E5]">{icon}</span>
           <h2 className="text-gray-900 font-semibold text-base">{title}</h2>
         </div>
         {editing ? (
@@ -95,7 +95,7 @@ function CVUploadCard({ onUpdate }: { onUpdate: (p: CandidateProfile) => void })
   return (
     <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
       <div className="flex items-center gap-2.5 mb-4">
-        <Upload size={16} className="text-[#0A66C2]" />
+        <Upload size={16} className="text-[#4F46E5]" />
         <h2 className="text-gray-900 font-semibold text-base">Upload CV</h2>
       </div>
 
@@ -105,7 +105,7 @@ function CVUploadCard({ onUpdate }: { onUpdate: (p: CandidateProfile) => void })
         onDrop={onDrop}
         onClick={() => !isUploading && inputRef.current?.click()}
         className={`relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-10 cursor-pointer transition-all
-          ${isDragging ? 'border-[#0A66C2] bg-[#EEF3F8]' : 'border-gray-300 hover:border-[#0A66C2] hover:bg-gray-50'}
+          ${isDragging ? 'border-[#4F46E5] bg-[#EEF2FF]' : 'border-gray-300 hover:border-[#4F46E5] hover:bg-gray-50'}
           ${isUploading ? 'pointer-events-none opacity-70' : ''}
         `}
       >
@@ -119,7 +119,7 @@ function CVUploadCard({ onUpdate }: { onUpdate: (p: CandidateProfile) => void })
 
         {isUploading ? (
           <>
-            <Loader2 size={32} className="text-[#0A66C2] animate-spin" />
+            <Loader2 size={32} className="text-[#4F46E5] animate-spin" />
             <div className="text-center">
               <p className="text-sm font-medium text-gray-700">Parsing {fileName}…</p>
               <p className="text-xs text-gray-400 mt-1">Extracting your experience, skills & education</p>
@@ -127,8 +127,8 @@ function CVUploadCard({ onUpdate }: { onUpdate: (p: CandidateProfile) => void })
           </>
         ) : (
           <>
-            <div className="w-12 h-12 rounded-xl bg-[#EEF3F8] flex items-center justify-center">
-              <FileText size={22} className="text-[#0A66C2]" />
+            <div className="w-12 h-12 rounded-xl bg-[#EEF2FF] flex items-center justify-center">
+              <FileText size={22} className="text-[#4F46E5]" />
             </div>
             <div className="text-center">
               <p className="text-sm font-medium text-gray-700">
@@ -194,10 +194,10 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
     <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-5 flex-1 min-w-0">
-          <div className="w-16 h-16 rounded-2xl bg-[#EEF3F8] border border-[#0A66C2]/30 flex items-center justify-center shrink-0 overflow-hidden">
+          <div className="w-16 h-16 rounded-2xl bg-[#EEF2FF] border border-[#4F46E5]/30 flex items-center justify-center shrink-0 overflow-hidden">
             {profile.photoUrl
               ? <img src={profile.photoUrl} alt={profile.name} className="w-full h-full object-cover" />
-              : <User size={28} className="text-[#0A66C2]" />}
+              : <User size={28} className="text-[#4F46E5]" />}
           </div>
           {isHeader ? (
             <div className="flex-1 space-y-2.5">
@@ -211,7 +211,7 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
           ) : (
             <div className="min-w-0">
               <h1 className="text-gray-900 font-bold text-2xl leading-tight">{profile.name}</h1>
-              <p className="text-[#0A66C2] font-semibold text-base mt-1">{profile.title}</p>
+              <p className="text-[#4F46E5] font-semibold text-base mt-1">{profile.title}</p>
               <div className="flex flex-wrap gap-x-5 gap-y-1.5 mt-2.5">
                 {profile.email && (
                   <span className="flex items-center gap-2 text-sm text-gray-500">
@@ -288,7 +288,7 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
               onKeyDown={e => { if (e.key === 'Enter' && newSkill.trim()) { setSkillsDraft(d => [...d, newSkill.trim()]); setNewSkill(''); } }}
             />
             <button onClick={() => { if (newSkill.trim()) { setSkillsDraft(d => [...d, newSkill.trim()]); setNewSkill(''); } }}
-              className="flex items-center gap-1.5 text-sm text-[#0A66C2] hover:text-[#004182] border border-[#0A66C2]/30 hover:border-[#0A66C2]/60 rounded-lg px-4 py-2 transition-all">
+              className="flex items-center gap-1.5 text-sm text-[#4F46E5] hover:text-[#3730a3] border border-[#4F46E5]/30 hover:border-[#4F46E5]/60 rounded-lg px-4 py-2 transition-all">
               <Plus size={13} /> Add
             </button>
           </div>
@@ -333,7 +333,7 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
             </div>
           ))}
           <button onClick={() => setExpDraft(d => [...d, { role: '', company: '', duration: '', highlights: [''] }])}
-            className="flex items-center gap-1.5 text-sm text-[#0A66C2] hover:text-[#004182] border border-[#0A66C2]/30 rounded-lg px-4 py-2 transition-all">
+            className="flex items-center gap-1.5 text-sm text-[#4F46E5] hover:text-[#3730a3] border border-[#4F46E5]/30 rounded-lg px-4 py-2 transition-all">
             <Plus size={13} /> Add role
           </button>
         </div>
@@ -394,7 +394,7 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
             </div>
           ))}
           <button onClick={() => setProjDraft(d => [...d, { name: '', description: '', technologies: [] }])}
-            className="flex items-center gap-1.5 text-sm text-[#0A66C2] hover:text-[#004182] border border-[#0A66C2]/30 rounded-lg px-4 py-2 transition-all">
+            className="flex items-center gap-1.5 text-sm text-[#4F46E5] hover:text-[#3730a3] border border-[#4F46E5]/30 rounded-lg px-4 py-2 transition-all">
             <Plus size={13} /> Add project
           </button>
         </div>
@@ -436,7 +436,7 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
             </div>
           ))}
           <button onClick={() => setEduDraft(d => [...d, { degree: '', institution: '', year: '' }])}
-            className="flex items-center gap-1.5 text-sm text-[#0A66C2] hover:text-[#004182] border border-[#0A66C2]/30 rounded-lg px-4 py-2 transition-all">
+            className="flex items-center gap-1.5 text-sm text-[#4F46E5] hover:text-[#3730a3] border border-[#4F46E5]/30 rounded-lg px-4 py-2 transition-all">
             <Plus size={13} /> Add education
           </button>
         </div>
@@ -472,7 +472,7 @@ export function ProfilePage({ profile, onChangeProfile, onUpdate }: ProfilePageP
             </div>
           ))}
           <button onClick={() => setAchDraft(d => [...d, ''])}
-            className="flex items-center gap-1.5 text-sm text-[#0A66C2] hover:text-[#004182] border border-[#0A66C2]/30 rounded-lg px-4 py-2 transition-all">
+            className="flex items-center gap-1.5 text-sm text-[#4F46E5] hover:text-[#3730a3] border border-[#4F46E5]/30 rounded-lg px-4 py-2 transition-all">
             <Plus size={13} /> Add achievement
           </button>
         </div>

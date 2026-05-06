@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Search, Loader2, AlertCircle, Users, Key, ChevronDown } from 'lucide-react';
 import { RecruiterCard, Recruiter } from '../components/RecruiterCard';
 
-const LI_AT_KEY = 'interview_copilot_li_at';
+const LI_AT_KEY = 'jobcracker_li_at';
 const PAGE_SIZE = 10;
 
 export function RecruitersPage() {
@@ -68,14 +68,14 @@ export function RecruitersPage() {
               value={keywords}
               onChange={e => setKeywords(e.target.value)}
               placeholder="Keywords (e.g. recruiter, talent acquisition)"
-              className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-300 focus:border-[#0A66C2] rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors"
+              className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-300 focus:border-[#4F46E5] rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors"
             />
           </div>
           <input
             value={location}
             onChange={e => setLocation(e.target.value)}
             placeholder="Location (optional)"
-            className="w-44 px-3 py-2.5 bg-gray-50 border border-gray-300 focus:border-[#0A66C2] rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors"
+            className="w-44 px-3 py-2.5 bg-gray-50 border border-gray-300 focus:border-[#4F46E5] rounded-xl text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors"
           />
           <button
             type="submit"
@@ -108,7 +108,7 @@ export function RecruitersPage() {
                 It never leaves your machine — only sent to your local server.
               </p>
               <ol className="text-gray-500 text-xs space-y-1 mb-3 list-decimal pl-4">
-                <li>Log in to <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer" className="text-[#0A66C2] hover:underline">linkedin.com</a></li>
+                <li>Log in to <a href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer" className="text-[#4F46E5] hover:underline">linkedin.com</a></li>
                 <li>Open DevTools (F12) → Application tab → Cookies → <strong className="text-gray-700">www.linkedin.com</strong></li>
                 <li>Find the <code className="bg-gray-100 px-1 rounded text-amber-600 font-mono">li_at</code> row and copy its Value</li>
                 <li>Paste it below and click Save</li>

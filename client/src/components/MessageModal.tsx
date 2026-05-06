@@ -62,8 +62,8 @@ export function MessageModal({ connection, userProfile, onClose }: MessageModalP
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#EEF3F8] flex items-center justify-center">
-              <MessageSquare size={15} className="text-[#0A66C2]" />
+            <div className="w-8 h-8 rounded-lg bg-[#EEF2FF] flex items-center justify-center">
+              <MessageSquare size={15} className="text-[#4F46E5]" />
             </div>
             <div>
               <h2 className="text-gray-900 font-semibold text-sm">Message {fullName}</h2>
@@ -88,12 +88,12 @@ export function MessageModal({ connection, userProfile, onClose }: MessageModalP
                   onClick={() => handleTypeChange(t.id)}
                   className={`px-3 py-2.5 rounded-xl text-xs font-semibold text-left border transition-all ${
                     messageType === t.id
-                      ? 'bg-[#EEF3F8] border-[#0A66C2] text-[#0A66C2]'
+                      ? 'bg-[#EEF2FF] border-[#4F46E5] text-[#4F46E5]'
                       : 'bg-gray-50 border-gray-200 text-gray-600 hover:border-gray-300'
                   }`}
                 >
                   <div className="font-semibold">{t.label}</div>
-                  <div className={`text-xs mt-0.5 font-normal leading-tight ${messageType === t.id ? 'text-[#0A66C2]/70' : 'text-gray-400'}`}>{t.description}</div>
+                  <div className={`text-xs mt-0.5 font-normal leading-tight ${messageType === t.id ? 'text-[#4F46E5]/70' : 'text-gray-400'}`}>{t.description}</div>
                 </button>
               ))}
             </div>
@@ -106,7 +106,7 @@ export function MessageModal({ connection, userProfile, onClose }: MessageModalP
               <button
                 onClick={() => generate(messageType)}
                 disabled={loading}
-                className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-[#0A66C2] transition-colors disabled:opacity-40"
+                className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-[#4F46E5] transition-colors disabled:opacity-40"
               >
                 <RefreshCw size={11} className={loading ? 'animate-spin' : ''} />
                 Regenerate
@@ -116,7 +116,7 @@ export function MessageModal({ connection, userProfile, onClose }: MessageModalP
             {loading ? (
               <div className="h-36 flex items-center justify-center bg-gray-50 rounded-xl border border-gray-200">
                 <div className="flex items-center gap-2 text-gray-400 text-sm">
-                  <Loader2 size={15} className="animate-spin text-[#0A66C2]" />
+                  <Loader2 size={15} className="animate-spin text-[#4F46E5]" />
                   Generating personalised message…
                 </div>
               </div>
@@ -129,7 +129,7 @@ export function MessageModal({ connection, userProfile, onClose }: MessageModalP
                 value={message}
                 onChange={e => setMessage(e.target.value)}
                 rows={6}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 focus:border-[#0A66C2] rounded-xl text-sm text-gray-800 leading-relaxed outline-none resize-none transition-colors"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 focus:border-[#4F46E5] rounded-xl text-sm text-gray-800 leading-relaxed outline-none resize-none transition-colors"
               />
             )}
           </div>
@@ -145,7 +145,7 @@ export function MessageModal({ connection, userProfile, onClose }: MessageModalP
           <button
             onClick={handleCopy}
             disabled={!message || loading}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#0A66C2] hover:bg-[#004182] disabled:opacity-40 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-[#0A66C2]/20"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#4F46E5] hover:bg-[#3730a3] disabled:opacity-40 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-[#4F46E5]/20"
           >
             {copied ? <><Check size={15} /> Copied!</> : <><Copy size={15} /> Copy Message</>}
           </button>

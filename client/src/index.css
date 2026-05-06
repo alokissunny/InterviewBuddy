@@ -12,8 +12,19 @@
     font-size: 15px;
   }
 
+  /* Dynamic viewport height for mobile browsers */
+  .h-dvh-safe {
+    height: 100vh;
+    height: 100dvh;
+  }
+
   * {
     box-sizing: border-box;
+  }
+
+  /* Prevent blue tap flash on mobile */
+  * {
+    -webkit-tap-highlight-color: transparent;
   }
 
   ::-webkit-scrollbar {
@@ -41,7 +52,7 @@
   }
 
   .btn-primary {
-    @apply flex items-center gap-2 px-5 py-2.5 bg-[#0A66C2] hover:bg-[#004182] text-white text-sm font-semibold rounded-xl shadow-lg shadow-[#0A66C2]/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
   .btn-ghost {
@@ -54,5 +65,33 @@
 
   .section-label {
     @apply text-xs font-bold text-gray-400 uppercase tracking-widest mb-2;
+  }
+
+  /* Horizontal scroll container — hides scrollbar but keeps scroll */
+  .scroll-x-hidden {
+    overflow-x: auto;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scroll-x-hidden::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Safe-area bottom padding for bottom nav */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pb-nav-safe {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom));
   }
 }

@@ -66,7 +66,7 @@ export function ConnectionCard({ connection: c, userProfile }: ConnectionCardPro
         <div className="flex flex-col gap-1.5 shrink-0">
           <button
             onClick={() => setShowMessage(true)}
-            className="p-2 text-gray-400 hover:text-[#0A66C2] hover:bg-[#EEF3F8] rounded-lg transition-colors"
+            className="p-2 text-gray-400 hover:text-[#4F46E5] hover:bg-[#EEF2FF] rounded-lg transition-colors"
             title="Send message"
           >
             <MessageSquare size={14} />
@@ -76,7 +76,7 @@ export function ConnectionCard({ connection: c, userProfile }: ConnectionCardPro
               href={c.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2 text-gray-400 hover:text-[#0A66C2] hover:bg-[#EEF3F8] rounded-lg transition-colors"
+              className="p-2 text-gray-400 hover:text-[#4F46E5] hover:bg-[#EEF2FF] rounded-lg transition-colors"
               title="View LinkedIn profile"
             >
               <ExternalLink size={14} />

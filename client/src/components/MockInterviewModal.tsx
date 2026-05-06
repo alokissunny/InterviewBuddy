@@ -104,13 +104,13 @@ function AvatarPulse({ speaking, logo, company }: { speaking: boolean; logo?: st
   return (
     <div className="relative flex items-center justify-center w-14 h-14 shrink-0">
       {speaking && (
-        <div className="absolute inset-0 rounded-full border-2 border-[#0A66C2]/50 animate-ping" />
+        <div className="absolute inset-0 rounded-full border-2 border-[#4F46E5]/50 animate-ping" />
       )}
       <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 overflow-hidden transition-colors
-        ${speaking ? 'border-[#0A66C2] bg-[#0A66C2]/10' : 'border-gray-600 bg-gray-800'}`}>
+        ${speaking ? 'border-[#4F46E5] bg-[#4F46E5]/10' : 'border-gray-600 bg-gray-800'}`}>
         {logo
           ? <img src={logo} alt={company} className="w-8 h-8 object-contain" />
-          : <Building2 size={20} className={speaking ? 'text-[#0A66C2]' : 'text-gray-500'} />}
+          : <Building2 size={20} className={speaking ? 'text-[#4F46E5]' : 'text-gray-500'} />}
       </div>
     </div>
   );
@@ -123,7 +123,7 @@ function ChatBubble({ turn }: { turn: Turn }) {
       <div className={`max-w-[82%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed
         ${isInterviewer
           ? 'bg-gray-700/80 text-gray-100 rounded-tl-sm'
-          : 'bg-[#0A66C2]/80 text-white rounded-tr-sm'}`}>
+          : 'bg-[#4F46E5]/80 text-white rounded-tr-sm'}`}>
         {turn.text}
       </div>
     </div>
@@ -442,7 +442,7 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
               {stage === 'loading' && <p className="text-xs text-gray-500">Preparing interview…</p>}
               {stage === 'preview' && <p className="text-xs text-gray-400">{questions.length} questions ready · review &amp; start when ready</p>}
               {(stage === 'intro' || stage === 'asking') && tts.isSpeaking && (
-                <p className="text-xs text-[#0A66C2] flex items-center gap-1"><Volume2 size={11} /> Speaking…</p>
+                <p className="text-xs text-[#4F46E5] flex items-center gap-1"><Volume2 size={11} /> Speaking…</p>
               )}
               {stage === 'listening' && (
                 <p className="text-xs text-emerald-400 flex items-center gap-1"><Mic size={11} /> Listening</p>
@@ -465,7 +465,7 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
               <div className="flex gap-1">
                 {questions.map((_, i) => (
                   <div key={i} className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                    i < topicIdx ? 'bg-emerald-500' : i === topicIdx ? 'bg-[#0A66C2]' : 'bg-gray-600'
+                    i < topicIdx ? 'bg-emerald-500' : i === topicIdx ? 'bg-[#4F46E5]' : 'bg-gray-600'
                   }`} />
                 ))}
               </div>
@@ -491,7 +491,7 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
           {/* Loading */}
           {stage === 'loading' && (
             <div className="flex flex-col items-center justify-center h-60 gap-3">
-              <Loader2 size={30} className="text-[#0A66C2] animate-spin" />
+              <Loader2 size={30} className="text-[#4F46E5] animate-spin" />
               <p className="text-gray-400 text-sm">Tailoring questions to the role…</p>
             </div>
           )}
@@ -499,7 +499,7 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
           {/* Preview — all questions with suggested answers */}
           {stage === 'preview' && (
             <div className="space-y-3">
-              <div className="bg-[#0A66C2]/10 border border-[#0A66C2]/20 rounded-2xl px-4 py-3">
+              <div className="bg-[#4F46E5]/10 border border-[#4F46E5]/20 rounded-2xl px-4 py-3">
                 <p className="text-sm font-semibold text-white mb-0.5">Your interview for {job.title}</p>
                 <p className="text-xs text-gray-400">{job.company} · {questions.length} questions · voice-based · ~15 min</p>
               </div>
@@ -542,7 +542,7 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
           {/* Asking — hint below the question bubble */}
           {stage === 'asking' && (
             <div className="flex items-center gap-2 text-xs text-gray-500 px-1">
-              <Volume2 size={11} className="text-[#0A66C2] shrink-0" />
+              <Volume2 size={11} className="text-[#4F46E5] shrink-0" />
               Reading question… tap <span className="text-emerald-400 font-medium">Start Answering</span> when ready
             </div>
           )}
@@ -662,7 +662,7 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
             {stage === 'preview' && questions.length > 0 && (
               <button
                 onClick={() => startIntro(questions)}
-                className="flex items-center gap-2 px-5 py-2 bg-[#0A66C2] hover:bg-[#004182] text-white text-sm font-semibold rounded-xl shadow-lg shadow-[#0A66C2]/20 transition-all"
+                className="flex items-center gap-2 px-5 py-2 bg-[#4F46E5] hover:bg-[#3730a3] text-white text-sm font-semibold rounded-xl shadow-lg shadow-[#4F46E5]/20 transition-all"
               >
                 <Mic size={13} /> Start Interview
               </button>
@@ -677,7 +677,7 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
                 <button
                   onClick={() => handleCandidateAnswer(editableTranscript || speech.accumulatedText)}
                   disabled={!editableTranscript.trim() && !speech.accumulatedText.trim() && !speech.interimText.trim()}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-[#0A66C2] hover:bg-[#004182] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-all"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-[#4F46E5] hover:bg-[#3730a3] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-all"
                 >
                   <MicOff size={13} /> Done
                 </button>
@@ -706,7 +706,7 @@ export function MockInterviewModal({ job, profile, onClose }: Props) {
             {stage === 'feedback_speaking' && (
               <button
                 onClick={nextTopic}
-                className="flex items-center gap-1.5 px-4 py-2 bg-[#0A66C2] hover:bg-[#004182] text-white text-sm font-semibold rounded-xl transition-all"
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#4F46E5] hover:bg-[#3730a3] text-white text-sm font-semibold rounded-xl transition-all"
               >
                 {topicIdx + 1 >= questions.length
                   ? <><CheckCircle2 size={13} /> Finish</>

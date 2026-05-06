@@ -14,7 +14,11 @@
       "Bash(curl -s \"https://api.apify.com/v2/acts/worldunboxer~rapid-linkedin-scraper/versions/1.2\")",
       "Bash(curl -s \"https://api.apify.com/v2/acts/worldunboxer~rapid-linkedin-scraper/webhooks\")",
       "Bash(curl -s \"https://api.apify.com/v2/store?search=worldunboxer+rapid-linkedin\")",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(xargs sed *)",
+      "Bash(curl -s \"https://generativelanguage.googleapis.com/v1beta/models?key=AIzaSyDN8eqc3jWDU_7J4miPtWWMycSPuSB40Go\")",
+      "Bash(node -e \"const d=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); const j=JSON.parse\\(d\\); j.models.filter\\(m=>m.supportedGenerationMethods?.includes\\('generateContent'\\)\\).forEach\\(m=>console.log\\(m.name, m.displayName\\)\\)\")",
+      "Read(//Users/alok.srivastava/.claude/projects/**)"
     ]
   }
 }
