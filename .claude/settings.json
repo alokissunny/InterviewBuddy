@@ -21,7 +21,9 @@
       "Read(//Users/alok.srivastava/.claude/projects/**)",
       "Bash(cp \"/Users/alok.srivastava/.claude/projects/-Users-alok-srivastava-Documents-interview-Copilot/6ad3d678-12fe-47b4-bb7e-291e8318af2d/tool-results/webfetch-1778215690167-tz8mh4.bin\" /tmp/design.tar)",
       "Bash(tar xf *)",
-      "Read(//tmp/jobcracker/project/**)"
+      "Read(//tmp/jobcracker/project/**)",
+      "Bash(curl -s -L \"https://api.anthropic.com/v1/design/h/Ur6ECloG45UntuwsKKWmeA?open_file=JobCracker.html\" -o /tmp/design2.gz)",
+      "Read(//tmp/**)"
     ]
   }
 }

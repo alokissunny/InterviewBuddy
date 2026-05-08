@@ -12,8 +12,8 @@ const TK = {
   border:   '#1e2e28',
   border2:  '#2a3e36',
   ink:      '#cce8d8',
-  inkDim:   '#5a8a72',
-  inkFaint: '#2a4038',
+  inkDim:   '#9ec8b0',
+  inkFaint: '#6a9a82',
   accent:   '#00d97a',
   warn:     '#f5c400',
   pink:     '#f06fa0',
@@ -73,7 +73,7 @@ function TerminalEntry({ entry, dimmed }: { entry: CoachingEntry; dimmed: boolea
       {question && (
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
           <span style={{ fontSize: 10, letterSpacing: '0.1em', padding: '2px 6px', borderRadius: 3, fontWeight: 700, background: 'rgba(240,111,160,0.12)', color: TK.pink, border: `1px solid rgba(240,111,160,0.25)`, flexShrink: 0, marginTop: 3 }}>THEM</span>
-          <span style={{ color: TK.inkDim, flex: 1, wordBreak: 'break-word' }}>{question}</span>
+          <span style={{ color: TK.inkDim, flex: 1, wordBreak: 'break-word', fontSize: 15 }}>{question}</span>
         </div>
       )}
 
@@ -100,9 +100,9 @@ function TerminalEntry({ entry, dimmed }: { entry: CoachingEntry; dimmed: boolea
               onClick={() => !dimmed && setOpenPtr(openPtr === i ? null : i)}
               style={{ paddingLeft: 14, position: 'relative', cursor: p.detail && !dimmed ? 'pointer' : 'default' }}>
               <span style={{ position: 'absolute', left: 0, top: 1, color: TK.accent, fontSize: 11 }}>▸</span>
-              <span style={{ color: TK.ink, fontWeight: 600 }}>{p.cue}</span>
+              <span style={{ color: TK.ink, fontWeight: 600, fontSize: 15 }}>{p.cue}</span>
               {openPtr === i && p.detail && (
-                <div style={{ color: TK.inkDim, fontSize: 12, marginTop: 4, lineHeight: 1.55, fontWeight: 400 }}>{p.detail}</div>
+                <div style={{ color: TK.inkDim, fontSize: 14, marginTop: 4, lineHeight: 1.55, fontWeight: 400 }}>{p.detail}</div>
               )}
             </div>
           ))}
@@ -123,7 +123,7 @@ function TerminalEntry({ entry, dimmed }: { entry: CoachingEntry; dimmed: boolea
       {result.avoid && (
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: 'rgba(224,85,85,0.06)', borderLeft: `2px solid ${TK.red}`, borderRadius: '0 4px 4px 0', padding: '6px 10px' }}>
           <span style={{ color: TK.red, fontSize: 9, letterSpacing: '0.12em', flexShrink: 0, marginTop: 2 }}>AVOID</span>
-          <span style={{ color: '#e09090', fontSize: 12 }}>{result.avoid}</span>
+          <span style={{ color: '#e09090', fontSize: 14 }}>{result.avoid}</span>
         </div>
       )}
     </div>
@@ -181,14 +181,6 @@ function TerminalOverlay({ history, isProcessing, onStop }: TerminalOverlayProps
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: isProcessing ? TK.warn : TK.accent, display: 'inline-block', animation: 'jc-pulse 1.6s infinite' }} />
             {isProcessing ? 'analysing' : 'live'}
           </span>
-          <button onClick={onStop} style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            padding: '4px 10px', borderRadius: 4,
-            background: 'rgba(224,85,85,0.12)', border: `1px solid rgba(224,85,85,0.28)`,
-            color: '#e09090', fontSize: 11, fontFamily: TK.mono, cursor: 'pointer', fontWeight: 600,
-          }}>
-            <MonitorOff size={11} /> stop
-          </button>
         </div>
       </div>
 
@@ -238,6 +230,23 @@ function TerminalOverlay({ history, isProcessing, onStop }: TerminalOverlayProps
             ))}
           </div>
         )}
+      </div>
+
+      {/* ── Floating stop button ── */}
+      <div style={{
+        flexShrink: 0, display: 'flex', justifyContent: 'center',
+        padding: '12px 16px',
+        background: `linear-gradient(to top, ${TK.bg} 60%, transparent)`,
+      }}>
+        <button onClick={onStop} style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '14px 40px', borderRadius: 8,
+          background: 'rgba(224,85,85,0.14)', border: `1.5px solid rgba(224,85,85,0.45)`,
+          color: '#f08080', fontSize: 15, fontFamily: TK.mono, cursor: 'pointer', fontWeight: 700,
+          letterSpacing: '0.06em',
+        }}>
+          <MonitorOff size={18} /> STOP SESSION
+        </button>
       </div>
 
       {/* ── Footer bar ── */}
