@@ -355,6 +355,14 @@ export default function App() {
   const handleUpdateProfile = (p: CandidateProfile) => {
     saveProfile(p);
     setProfile(p);
+    // Sync to MongoDB — fire and forget, never blocks the UI
+    if (p.email) {
+      fetch('/api/profile/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile: p }),
+      }).catch(() => {/* silent — server may be offline */});
+    }
   };
 
   const handleChangeProfile = () => {

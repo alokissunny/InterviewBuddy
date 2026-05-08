@@ -10,11 +10,17 @@ const cheerio = require('cheerio');
 const fs = require('fs');
 const path = require('path');
 
+const { connectDB, findOrCreateUser, upsertUser, setResumeS3Key } = require('./services/db');
+const s3 = require('./services/s3');
+
 const TAILOR_PROMPT_PATH = path.join(__dirname, 'tailor-prompt.md');
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+// Connect to MongoDB on startup (non-blocking — app works fine without it)
+connectDB();
 
 // Client-provided key takes priority over server env key (allows override from UI).
 // Auto-detects Groq keys by gsk_ prefix and routes to Groq's endpoint.
@@ -97,20 +103,30 @@ app.get('/auth/linkedin/callback', async (req, res) => {
     console.log('[LinkedIn OAuth] userinfo keys:', Object.keys(userinfo).join(', '));
     console.log('[LinkedIn OAuth] name:', name, '| email:', userinfo.email, '| picture:', userinfo.picture ? 'yes' : 'no');
 
-    const profile = {
+    const basicProfile = {
       name,
-      title: '',
-      email: userinfo.email || '',
-      phone: '',
-      summary: '',
-      photoUrl: userinfo.picture || '',
-      profileUrl: '',
-      skills: [],
-      experience: [],
-      education: [],
-      projects: [],
+      title:       '',
+      email:       userinfo.email || '',
+      phone:       '',
+      summary:     '',
+      photoUrl:    userinfo.picture || '',
+      profileUrl:  '',
+      linkedinSub: userinfo.sub || '',
+      skills:      [],
+      experience:  [],
+      education:   [],
+      projects:    [],
       achievements: [],
     };
+
+    // Look up existing MongoDB profile; fall back to basic profile if DB is unavailable
+    let profile = basicProfile;
+    try {
+      const dbUser = await findOrCreateUser(basicProfile.email, basicProfile);
+      if (dbUser) profile = dbUser.toClientProfile();
+    } catch (dbErr) {
+      console.error('[DB] LinkedIn callback lookup failed:', dbErr.message);
+    }
 
     const encoded = Buffer.from(JSON.stringify(profile)).toString('base64');
     res.redirect(`${frontendUrl}?lp=${encoded}`);
@@ -178,10 +194,45 @@ Return ONLY valid JSON, no markdown, no explanation.`
     }
 
     const profile = JSON.parse(profileText);
+
+    // Upload original CV file to S3 (fire-and-forget — doesn't block the response)
+    const email = profile.email || req.body?.email || '';
+    if (s3.isConfigured()) {
+      const s3Key = s3.buildResumeKey(email, req.file.originalname);
+      s3.uploadBuffer(req.file.buffer, s3Key, req.file.mimetype)
+        .then(key => key && setResumeS3Key(email, key, process.env.S3_BUCKET_NAME))
+        .catch(err => console.error('[S3] Upload failed:', err.message));
+    }
+
+    // Persist enriched profile to MongoDB (fire-and-forget)
+    if (email) {
+      upsertUser(email, profile).catch(err =>
+        console.error('[DB] Profile save after CV upload failed:', err.message)
+      );
+    }
+
     res.json({ profile, rawText: cvText });
   } catch (error) {
     console.error('CV upload error:', error);
     res.status(500).json({ error: error.message || 'Failed to process CV' });
+  }
+});
+
+// ─── Profile Save (MongoDB upsert) ───────────────────────────────────────────
+app.post('/api/profile/save', async (req, res) => {
+  const { profile } = req.body;
+  if (!profile?.email) return res.status(400).json({ error: 'profile.email is required' });
+
+  try {
+    const user = await upsertUser(profile.email, profile);
+    if (!user) {
+      // DB not configured — silently succeed so client is never blocked
+      return res.json({ ok: true, persisted: false });
+    }
+    res.json({ ok: true, persisted: true });
+  } catch (err) {
+    console.error('[DB] /api/profile/save error:', err.message);
+    res.status(500).json({ error: err.message || 'Failed to save profile' });
   }
 });
 
