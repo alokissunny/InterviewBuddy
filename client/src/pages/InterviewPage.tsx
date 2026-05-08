@@ -1,8 +1,259 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { MonitorOff, AlertCircle, Radio, Sparkles, Mic, Activity, Waves } from 'lucide-react';
 import { CandidateProfile } from '../types';
 import { useGeminiCapture, CoachingResult } from '../hooks/useGeminiCapture';
 import { ResponsePanel, CoachingEntry } from '../components/ResponsePanel';
+
+// ─── Terminal tokens ──────────────────────────────────────────────────────────
+const TK = {
+  bg:       '#0b0f0e',
+  bg2:      '#111918',
+  bg3:      '#172420',
+  border:   '#1e2e28',
+  border2:  '#2a3e36',
+  ink:      '#cce8d8',
+  inkDim:   '#5a8a72',
+  inkFaint: '#2a4038',
+  accent:   '#00d97a',
+  warn:     '#f5c400',
+  pink:     '#f06fa0',
+  violet:   '#9d8cee',
+  red:      '#e05555',
+  mono:     '"JetBrains Mono", ui-monospace, monospace',
+};
+
+const KEYFRAMES_ID = 'jc-terminal-keyframes';
+const KEYFRAMES = `
+@keyframes jc-pulse  { 0%,100%{opacity:1} 50%{opacity:.4} }
+@keyframes jc-wave   { 0%,100%{height:3px} 50%{height:13px} }
+@keyframes jc-in     { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+@keyframes jc-cursor { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+@keyframes spin      { to{transform:rotate(360deg)} }
+`;
+
+function ensureKeyframes() {
+  if (!document.getElementById(KEYFRAMES_ID)) {
+    const s = document.createElement('style');
+    s.id = KEYFRAMES_ID; s.textContent = KEYFRAMES;
+    document.head.appendChild(s);
+  }
+}
+
+// ─── Terminal Overlay ─────────────────────────────────────────────────────────
+
+interface TerminalOverlayProps {
+  history: CoachingEntry[];
+  isProcessing: boolean;
+  onStop: () => void;
+}
+
+function typeColor(t: string) {
+  const lc = t.toLowerCase();
+  if (lc.includes('behavioral'))  return TK.pink;
+  if (lc.includes('technical'))   return TK.violet;
+  if (lc.includes('situational')) return TK.warn;
+  return TK.accent;
+}
+
+function TerminalEntry({ entry, dimmed }: { entry: CoachingEntry; dimmed: boolean }) {
+  const { result, question } = entry;
+  const [openPtr, setOpenPtr] = useState<number | null>(null);
+  const tc = result.type ? typeColor(result.type) : TK.accent;
+
+  return (
+    <div style={{
+      opacity: dimmed ? 0.3 : 1,
+      animation: dimmed ? 'none' : 'jc-in .25s ease',
+      display: 'flex', flexDirection: 'column', gap: 8,
+      paddingBottom: 16,
+      borderBottom: `1px solid ${TK.border}`,
+      fontFamily: TK.mono, fontSize: 13, lineHeight: 1.6,
+    }}>
+      {/* Question */}
+      {question && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+          <span style={{ fontSize: 10, letterSpacing: '0.1em', padding: '2px 6px', borderRadius: 3, fontWeight: 700, background: 'rgba(240,111,160,0.12)', color: TK.pink, border: `1px solid rgba(240,111,160,0.25)`, flexShrink: 0, marginTop: 3 }}>THEM</span>
+          <span style={{ color: TK.inkDim, flex: 1, wordBreak: 'break-word' }}>{question}</span>
+        </div>
+      )}
+
+      {/* Type label + JC tag */}
+      <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
+        <span style={{ fontSize: 10, letterSpacing: '0.1em', padding: '2px 6px', borderRadius: 3, fontWeight: 700, background: 'rgba(0,217,122,0.1)', color: TK.accent, border: `1px solid rgba(0,217,122,0.25)`, flexShrink: 0 }}>JC</span>
+        {result.type && (
+          <span style={{ fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase', color: tc, background: `${tc}18`, border: `1px solid ${tc}35`, padding: '1px 6px', borderRadius: 3 }}>{result.type}</span>
+        )}
+      </div>
+
+      {/* Answer pointers */}
+      {result.pointers.length > 0 && (
+        <div style={{
+          borderLeft: `2px solid ${TK.accent}`,
+          paddingLeft: 14, paddingTop: 8, paddingBottom: 8, paddingRight: 12,
+          background: 'rgba(0,217,122,0.03)',
+          borderRadius: '0 6px 6px 0',
+          display: 'flex', flexDirection: 'column', gap: 6,
+        }}>
+          <div style={{ fontSize: 9, letterSpacing: '0.16em', color: TK.inkFaint, marginBottom: 2 }}>ANSWER</div>
+          {result.pointers.map((p, i) => (
+            <div key={i}
+              onClick={() => !dimmed && setOpenPtr(openPtr === i ? null : i)}
+              style={{ paddingLeft: 14, position: 'relative', cursor: p.detail && !dimmed ? 'pointer' : 'default' }}>
+              <span style={{ position: 'absolute', left: 0, top: 1, color: TK.accent, fontSize: 11 }}>▸</span>
+              <span style={{ color: TK.ink, fontWeight: 600 }}>{p.cue}</span>
+              {openPtr === i && p.detail && (
+                <div style={{ color: TK.inkDim, fontSize: 12, marginTop: 4, lineHeight: 1.55, fontWeight: 400 }}>{p.detail}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Keywords */}
+      {result.keywords.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
+          <span style={{ fontSize: 9, color: TK.inkFaint, letterSpacing: '0.14em', marginRight: 2 }}>KW</span>
+          {result.keywords.map((kw, i) => (
+            <span key={i} style={{ fontSize: 11, padding: '1px 7px', borderRadius: 3, background: TK.bg3, color: TK.inkDim, border: `1px solid ${TK.border2}` }}>{kw}</span>
+          ))}
+        </div>
+      )}
+
+      {/* Avoid */}
+      {result.avoid && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: 'rgba(224,85,85,0.06)', borderLeft: `2px solid ${TK.red}`, borderRadius: '0 4px 4px 0', padding: '6px 10px' }}>
+          <span style={{ color: TK.red, fontSize: 9, letterSpacing: '0.12em', flexShrink: 0, marginTop: 2 }}>AVOID</span>
+          <span style={{ color: '#e09090', fontSize: 12 }}>{result.avoid}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TerminalOverlay({ history, isProcessing, onStop }: TerminalOverlayProps) {
+  const feedRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { ensureKeyframes(); }, []);
+
+  // Scroll the feed container directly — reliable in fixed layouts
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      const el = feedRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    });
+  }, [history.length, isProcessing]);
+
+  const totalPointers = history.reduce((n, e) => n + e.result.pointers.length, 0);
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: TK.bg,
+      fontFamily: TK.mono,
+      display: 'flex', flexDirection: 'column',
+      color: TK.ink,
+    }}>
+      {/* ── Title bar ── */}
+      <div style={{
+        flexShrink: 0, display: 'flex', alignItems: 'center',
+        padding: '0 16px', height: 42,
+        background: TK.bg2,
+        borderBottom: `1px solid ${TK.border}`,
+        gap: 12,
+      }}>
+        {/* Traffic lights */}
+        <div style={{ display: 'flex', gap: 6, marginRight: 4 }}>
+          {[['#ff5f57', true], ['#febc2e', false], ['#28c840', false]].map(([c, clickable], i) => (
+            <div key={i} title={clickable ? 'Stop session' : undefined}
+              onClick={clickable ? onStop : undefined}
+              style={{ width: 12, height: 12, borderRadius: '50%', background: c as string, cursor: clickable ? 'pointer' : 'default', flexShrink: 0 }} />
+          ))}
+        </div>
+
+        {/* Title */}
+        <div style={{ flex: 1, textAlign: 'center', fontSize: 12, color: TK.inkDim, letterSpacing: '0.04em' }}>
+          jobcracker — interview copilot
+        </div>
+
+        {/* Live status */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: isProcessing ? TK.warn : TK.accent }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: isProcessing ? TK.warn : TK.accent, display: 'inline-block', animation: 'jc-pulse 1.6s infinite' }} />
+            {isProcessing ? 'analysing' : 'live'}
+          </span>
+          <button onClick={onStop} style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '4px 10px', borderRadius: 4,
+            background: 'rgba(224,85,85,0.12)', border: `1px solid rgba(224,85,85,0.28)`,
+            color: '#e09090', fontSize: 11, fontFamily: TK.mono, cursor: 'pointer', fontWeight: 600,
+          }}>
+            <MonitorOff size={11} /> stop
+          </button>
+        </div>
+      </div>
+
+      {/* ── Stats bar ── */}
+      <div style={{
+        flexShrink: 0, display: 'flex', alignItems: 'center', gap: 20,
+        padding: '0 16px', height: 28,
+        background: TK.bg,
+        borderBottom: `1px solid ${TK.border}`,
+        fontSize: 11, color: TK.inkFaint,
+      }}>
+        <span><span style={{ color: TK.inkDim }}>{history.length}</span> questions</span>
+        <span><span style={{ color: TK.inkDim }}>{totalPointers}</span> pointers</span>
+        {isProcessing && (
+          <span style={{ color: TK.accent, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', border: `1.5px solid ${TK.accent}`, borderTopColor: 'transparent', display: 'inline-block', animation: 'spin 0.75s linear infinite' }} />
+            generating…
+          </span>
+        )}
+        {!isProcessing && history.length === 0 && (
+          <span style={{ color: TK.inkFaint }}>waiting for question
+            <span style={{ display: 'inline-block', width: 7, height: 13, background: TK.inkFaint, verticalAlign: 'text-bottom', marginLeft: 3, animation: 'jc-cursor 1s steps(1) infinite' }} />
+          </span>
+        )}
+      </div>
+
+      {/* ── Feed ── */}
+      <div ref={feedRef} style={{
+        flex: 1, overflowY: 'auto',
+        padding: '20px 24px',
+        display: 'flex', flexDirection: 'column', gap: 20,
+      }}>
+        {history.slice(0, -1).map(e => <TerminalEntry key={e.id} entry={e} dimmed />)}
+        {history.length > 0 && (
+          <TerminalEntry key={history[history.length - 1].id} entry={history[history.length - 1]} dimmed={false} />
+        )}
+
+        {/* Analysing skeleton */}
+        {isProcessing && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7, animation: 'jc-in .2s ease' }}>
+            <div style={{ display: 'flex', gap: 7, alignItems: 'center' }}>
+              <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 3, fontWeight: 700, background: 'rgba(0,217,122,0.1)', color: TK.accent, border: `1px solid rgba(0,217,122,0.25)` }}>JC</span>
+              <span style={{ color: TK.inkDim, fontSize: 12 }}>generating answer…</span>
+            </div>
+            {[68, 82, 55, 74].map((w, i) => (
+              <div key={i} style={{ height: 10, borderRadius: 3, background: TK.bg3, width: `${w}%`, marginLeft: i > 0 ? 16 : 0, animation: `jc-pulse ${1.2 + i * 0.15}s ease infinite` }} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Footer bar ── */}
+      <div style={{
+        flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 16px', height: 26,
+        background: TK.bg2,
+        borderTop: `1px solid ${TK.border}`,
+        fontSize: 10, color: TK.inkFaint, letterSpacing: '0.06em',
+      }}>
+        <span>JC · interview copilot</span>
+        <span>click pointer to expand detail</span>
+      </div>
+    </div>
+  );
+}
 
 interface InterviewPageProps {
   profile: CandidateProfile;
@@ -38,6 +289,14 @@ export function InterviewPage({ profile }: InterviewPageProps) {
 
   return (
     <div className="h-full bg-[#F3F2EF] flex flex-col overflow-hidden">
+      {/* Terminal overlay — fixed over the full app when capturing */}
+      {isCapturing && (
+        <TerminalOverlay
+          history={coachingHistory}
+          isProcessing={isProcessing}
+          onStop={stopCapture}
+        />
+      )}
 
       {/* No Gemini key banner */}
       {noGemini && (
