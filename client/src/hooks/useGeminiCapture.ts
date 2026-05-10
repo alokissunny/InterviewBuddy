@@ -21,8 +21,21 @@ export interface GeminiCaptureReturn {
   stopCapture: () => void;
 }
 
-// 10s chunks give Gemini full sentences + richer acoustic context
-const CHUNK_MS = 10_000;
+// VAD config — flush on pause, not on a fixed timer
+const SILENCE_THRESHOLD  = 0.015;   // RMS below this = silence
+const SILENCE_DURATION_MS = 1800;   // 1.8s pause → flush
+const MAX_CHUNK_MS       = 45_000;  // safety cap: flush at 45s regardless
+const MIN_BLOB_BYTES     = 8_000;   // skip near-silent chunks
+const VAD_TICK_MS        = 100;     // VAD polling interval
+const MIN_SPEECH_MS      = 800;     // segment must have ≥800ms of real speech to be sent
+
+function getRMS(analyser: AnalyserNode): number {
+  const buf = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(buf);
+  let sum = 0;
+  for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+  return Math.sqrt(sum / buf.length);
+}
 
 export function useGeminiCapture(
   profile: CandidateProfile,
@@ -30,18 +43,26 @@ export function useGeminiCapture(
   onCoaching: (result: CoachingResult, question: string) => void,
   onError?: (msg: string) => void,
 ): GeminiCaptureReturn {
-  const [isCapturing,  setIsCapturing]  = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isCapturing,     setIsCapturing]     = useState(false);
+  const [isProcessing,    setIsProcessing]    = useState(false);
   const [geminiAvailable, setGeminiAvailable] = useState<boolean | null>(null);
 
-  const streamRef   = useRef<MediaStream | null>(null);
-  const mimeTypeRef = useRef('');
-  const chunksRef   = useRef<Blob[]>([]);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const activeRef   = useRef(false);
-  const pendingRef  = useRef(0);
+  const streamRef       = useRef<MediaStream | null>(null);
+  const mimeTypeRef     = useRef('');
+  const chunksRef       = useRef<Blob[]>([]);
+  const recorderRef     = useRef<MediaRecorder | null>(null);
+  const activeRef       = useRef(false);
+  const pendingRef      = useRef(0);
 
-  // Check server for Gemini key on mount
+  // VAD state
+  const audioCtxRef     = useRef<AudioContext | null>(null);
+  const analyserRef     = useRef<AnalyserNode | null>(null);
+  const vadIntervalRef  = useRef<number | null>(null);
+  const silenceStartRef = useRef<number | null>(null); // when current silence began
+  const chunkStartRef   = useRef<number>(0);           // when current recording segment began
+  const speechMsRef     = useRef<number>(0);           // cumulative speech ms in current segment
+  const hadSpeechRef    = useRef<boolean>(false);      // was any speech detected in segment?
+
   useEffect(() => {
     fetch('/api/interview/status')
       .then(r => r.json())
@@ -50,7 +71,7 @@ export function useGeminiCapture(
   }, []);
 
   const sendBlob = useCallback(async (blob: Blob) => {
-    if (blob.size < 8000) return; // skip silent / near-empty chunks (silence ≈ 3–5 KB per 10s)
+    if (blob.size < MIN_BLOB_BYTES) return;
 
     pendingRef.current++;
     setIsProcessing(true);
@@ -69,13 +90,10 @@ export function useGeminiCapture(
         return;
       }
 
-      // Always push transcript to panel
       if (data.transcript?.trim()) {
         onTranscript(data.transcript.trim());
       }
 
-      // Fire coaching whenever Gemini says a response is needed,
-      // or as a safety fallback if pointers/keywords came back even without the flag
       const hasCoachingContent = (data.keywords?.length > 0) || (data.pointers?.length > 0);
       if (data.needsResponse || hasCoachingContent) {
         const rawPointers: any[] = Array.isArray(data.pointers) ? data.pointers : [];
@@ -98,6 +116,14 @@ export function useGeminiCapture(
     }
   }, [profile, onTranscript, onCoaching, onError]);
 
+  // Flush the current recording segment: stopping the recorder triggers onstop
+  // which sends the blob and immediately restarts the recorder.
+  const flushRecording = useCallback(() => {
+    const recorder = recorderRef.current;
+    if (!recorder || recorder.state !== 'recording') return;
+    recorder.stop();
+  }, []);
+
   const buildRecorder = useCallback((audioStream: MediaStream) => {
     const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/ogg']
       .find(t => MediaRecorder.isTypeSupported(t)) || '';
@@ -111,24 +137,104 @@ export function useGeminiCapture(
     };
 
     recorder.onstop = () => {
+      // Snapshot and reset speech counters before restarting
+      const hadSpeech = hadSpeechRef.current;
+      const speechMs  = speechMsRef.current;
+      hadSpeechRef.current  = false;
+      speechMsRef.current   = 0;
+
       if (chunksRef.current.length > 0) {
         const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' });
         chunksRef.current = [];
-        sendBlob(blob);
+        // Only send if real speech was present — discards silent/ambient segments
+        if (hadSpeech && speechMs >= MIN_SPEECH_MS) {
+          sendBlob(blob);
+        } else {
+          console.log(`[VAD] Segment discarded — no real speech detected (${speechMs}ms)`);
+        }
       }
-      // Restart cycle if still supposed to be capturing
+      // Restart immediately so we never drop audio between flushes
       if (activeRef.current && recorder.stream.active) {
         chunksRef.current = [];
+        chunkStartRef.current   = Date.now();
+        silenceStartRef.current = null;
         recorder.start();
-        setTimeout(() => {
-          if (activeRef.current && recorder.state === 'recording') recorder.stop();
-        }, CHUNK_MS);
       }
     };
 
     recorder.onerror = (e: any) => console.error('[MediaRecorder]', e);
     return recorder;
   }, [sendBlob]);
+
+  const startVAD = useCallback((audioStream: MediaStream) => {
+    const ctx = new AudioContext();
+    audioCtxRef.current = ctx;
+
+    const source   = ctx.createMediaStreamSource(audioStream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 1024;
+    source.connect(analyser);
+    analyserRef.current = analyser;
+
+    chunkStartRef.current   = Date.now();
+    silenceStartRef.current = null;
+    hadSpeechRef.current    = false;
+    speechMsRef.current     = 0;
+
+    vadIntervalRef.current = window.setInterval(() => {
+      if (!activeRef.current || !analyserRef.current) return;
+
+      const rms     = getRMS(analyserRef.current);
+      const now     = Date.now();
+      const elapsed = now - chunkStartRef.current;
+
+      if (rms >= SILENCE_THRESHOLD) {
+        // Real speech — accumulate and reset silence timer
+        hadSpeechRef.current  = true;
+        speechMsRef.current  += VAD_TICK_MS;
+        silenceStartRef.current = null;
+      } else {
+        // Silence — start or extend silence window
+        if (silenceStartRef.current === null) {
+          silenceStartRef.current = now;
+        } else if (now - silenceStartRef.current >= SILENCE_DURATION_MS) {
+          // Sustained pause detected — flush the current segment
+          silenceStartRef.current = null;
+          flushRecording();
+        }
+      }
+
+      // Safety cap: flush if segment is getting too long regardless of silence
+      if (elapsed >= MAX_CHUNK_MS) {
+        silenceStartRef.current = null;
+        flushRecording();
+      }
+    }, VAD_TICK_MS);
+  }, [flushRecording]);
+
+  const stopCapture = useCallback(() => {
+    activeRef.current = false;
+
+    if (vadIntervalRef.current !== null) {
+      clearInterval(vadIntervalRef.current);
+      vadIntervalRef.current = null;
+    }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close().catch(() => {});
+      audioCtxRef.current = null;
+      analyserRef.current = null;
+    }
+
+    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
+    recorderRef.current = null;
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
+    chunksRef.current = [];
+
+    setIsCapturing(false);
+    setIsProcessing(false);
+    pendingRef.current = 0;
+  }, []);
 
   const startCapture = useCallback(async () => {
     const win = window as any;
@@ -154,7 +260,6 @@ export function useGeminiCapture(
       return;
     }
 
-    // Drop the dummy video track we had to request alongside audio
     displayStream.getVideoTracks().forEach(t => t.stop());
 
     const audioTracks = displayStream.getAudioTracks();
@@ -164,8 +269,8 @@ export function useGeminiCapture(
       return;
     }
 
-    streamRef.current  = displayStream;
-    activeRef.current  = true;
+    streamRef.current = displayStream;
+    activeRef.current = true;
 
     const audioStream = new MediaStream(audioTracks);
     const recorder    = buildRecorder(audioStream);
@@ -174,24 +279,10 @@ export function useGeminiCapture(
     audioTracks[0].onended = () => stopCapture();
 
     recorder.start();
-    setTimeout(() => {
-      if (activeRef.current && recorder.state === 'recording') recorder.stop();
-    }, CHUNK_MS);
+    startVAD(audioStream);
 
     setIsCapturing(true);
-  }, [buildRecorder, onError]);
-
-  const stopCapture = useCallback(() => {
-    activeRef.current = false;
-    if (recorderRef.current?.state === 'recording') recorderRef.current.stop();
-    recorderRef.current = null;
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    streamRef.current = null;
-    chunksRef.current = [];
-    setIsCapturing(false);
-    setIsProcessing(false);
-    pendingRef.current = 0;
-  }, []);
+  }, [buildRecorder, startVAD, stopCapture, onError]);
 
   useEffect(() => () => stopCapture(), [stopCapture]);
 

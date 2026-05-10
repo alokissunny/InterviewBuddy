@@ -413,9 +413,8 @@ Return ONLY valid JSON — no markdown, no explanation`;
     const transcript = (parsed.transcript || '').trim();
     const wordCount  = transcript.split(/\s+/).filter(Boolean).length;
 
-    // Hard gate: fewer than 6 real words means silence/noise — suppress coaching entirely
-    // This prevents Gemini hallucinations when no interview audio is playing
-    const needsResponse = wordCount >= 6 && !!parsed.needsResponse;
+    // Hard gate: fewer than 10 real words = silence/noise/hallucination — suppress entirely
+    const needsResponse = wordCount >= 10 && !!parsed.needsResponse;
 
     console.log('[Gemini] transcript:', `"${transcript.slice(0, 80)}"`, `(${wordCount} words)`);
     console.log('[Gemini] needsResponse:', needsResponse, '| type:', parsed.type || '—');
