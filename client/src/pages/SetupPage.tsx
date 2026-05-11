@@ -28,6 +28,40 @@ const KEYFRAMES = `
 @keyframes jc-wave   { 0%,100%{height:3px} 50%{height:12px} }
 @keyframes jc-scroll { to{transform:translateX(-50%)} }
 @keyframes spin      { to{transform:rotate(360deg)} }
+
+@media (max-width: 768px) {
+  .jc-nav            { padding: 14px 20px !important; }
+  .jc-nav-links      { display: none !important; }
+  .jc-nav-meta       { display: none !important; }
+
+  .jc-hero-section   { padding: 36px 0 28px !important; }
+  .jc-hero-grid      { grid-template-columns: 1fr !important; gap: 0 !important; padding: 0 20px !important; }
+  .jc-editor-mock    { display: none !important; }
+  .jc-hero-meta      { gap: 20px 28px !important; flex-wrap: wrap !important; }
+
+  .jc-strip-grid     { grid-template-columns: 1fr 1fr !important; padding: 0 20px !important; }
+  .jc-strip-cell:nth-child(even) { border-right: none !important; }
+  .jc-strip-cell     { padding: 14px 16px !important; font-size: 11px !important; }
+
+  .jc-features-section { padding: 56px 0 !important; }
+  .jc-feat-container { padding: 0 20px !important; }
+  .jc-section-head   { margin-bottom: 36px !important; }
+  .jc-feature        { grid-template-columns: 1fr !important; gap: 16px !important; padding: 28px 0 !important; }
+  .jc-feat-num       { display: none !important; }
+
+  .jc-how-section    { padding-bottom: 56px !important; }
+  .jc-how-container  { padding: 0 20px !important; }
+  .jc-steps-grid     { grid-template-columns: 1fr !important; border-radius: 8px !important; }
+  .jc-step           { min-height: auto !important; padding: 24px 20px !important; }
+
+  .jc-cta-outer      { margin: 20px 16px 40px !important; }
+  .jc-cta-box        { padding: 40px 24px !important; }
+
+  .jc-foot           { padding: 32px 20px !important; }
+  .jc-foot-grid      { grid-template-columns: 1fr 1fr !important; gap: 28px !important; }
+  .jc-foot-brand     { grid-column: span 2 !important; }
+  .jc-foot-bot       { flex-direction: column !important; gap: 8px !important; }
+}
 `;
 
 function InjectStyles() {
@@ -72,36 +106,17 @@ function BtnPrimary({ href, children, onClick }: { href?: string; children: Reac
     whiteSpace: 'nowrap', cursor: 'pointer', border: 'none',
     textDecoration: 'none', transition: 'transform .15s ease',
   };
-  if (href) return <a href={href} style={style}>{children}</a>;
+  if (href) return (
+    <a href={href} style={style} onClick={(e) => { e.preventDefault(); window.location.href = href; }}>{children}</a>
+  );
   return <button style={style} onClick={onClick}>{children}</button>;
 }
 
-function BtnGhost({ href, children }: { href?: string; children: React.ReactNode }) {
-  return (
-    <a href={href || '#'} style={{
-      display: 'inline-flex', alignItems: 'center', gap: 8,
-      padding: '9px 16px', borderRadius: 6,
-      color: T.ink2, border: `1px solid ${T.line2}`,
-      fontSize: 13.5, fontWeight: 500, fontFamily: T.sans,
-      whiteSpace: 'nowrap', textDecoration: 'none',
-    }}>{children}</a>
-  );
-}
-
-function BtnLink({ href, children }: { href?: string; children: React.ReactNode }) {
-  return (
-    <a href={href || '#'} style={{
-      display: 'inline-flex', alignItems: 'center', gap: 8,
-      padding: '9px 0', color: T.inkDim,
-      fontSize: 13.5, fontFamily: T.sans, textDecoration: 'none',
-    }}>{children}</a>
-  );
-}
 
 // ─── Nav ──────────────────────────────────────────────────────────────────────
 function Nav() {
   return (
-    <nav style={{
+    <nav className="jc-nav" style={{
       position: 'relative', zIndex: 10,
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '22px 32px',
@@ -119,22 +134,21 @@ function Nav() {
       </div>
 
       {/* Nav links */}
-      <div style={{ display: 'flex', gap: 28, color: T.inkDim, fontSize: 13.5 }}>
-        {[['Copilot','#copilot'],['Features','#features'],['How it works','#how'],['Pricing','#pricing'],['Changelog','#changelog']].map(([l, h]) => (
+      <div className="jc-nav-links" style={{ display: 'flex', gap: 28, color: T.inkDim, fontSize: 13.5 }}>
+        {[['Features','#features'],['How it works','#how']].map(([l, h]) => (
           <a key={l} href={h} style={{ color: T.inkDim, textDecoration: 'none' }}>{l}</a>
         ))}
       </div>
 
       {/* Nav right */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <span style={{
+        <span className="jc-nav-meta" style={{
           fontFamily: T.mono, fontSize: 11.5, color: T.inkDim,
           display: 'flex', alignItems: 'center', gap: 6,
         }}>
           <span style={{ width: 5, height: 5, borderRadius: '50%', background: T.accent, display: 'inline-block', animation: 'jc-pulse 2.4s ease-in-out infinite' }} />
           14k offers · this month
         </span>
-        <BtnGhost href="#">Sign in</BtnGhost>
         <BtnPrimary href="/auth/linkedin">Get started <span>→</span></BtnPrimary>
       </div>
     </nav>
@@ -157,7 +171,7 @@ function EditorMock() {
   const curLine = 8;
 
   return (
-    <div style={{
+    <div className="jc-editor-mock" style={{
       background: T.bg2, border: `1px solid ${T.line}`, borderRadius: 10,
       fontFamily: T.mono, fontSize: 13, overflow: 'hidden',
       boxShadow: '0 24px 64px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.02) inset',
@@ -255,9 +269,9 @@ function Strip() {
   ];
   return (
     <div style={{ position: 'relative', zIndex: 2, borderTop: `1px solid ${T.line}`, borderBottom: `1px solid ${T.line}`, background: T.bg2 }}>
-      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '0 32px', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', fontFamily: T.mono, fontSize: 12 }}>
+      <div className="jc-strip-grid" style={{ maxWidth: 1240, margin: '0 auto', padding: '0 32px', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', fontFamily: T.mono, fontSize: 12 }}>
         {cells.map((c, i) => (
-          <div key={i} style={{
+          <div key={i} className="jc-strip-cell" style={{
             padding: '18px 24px', borderRight: i < 3 ? `1px solid ${T.line}` : 'none',
             color: T.inkDim, display: 'flex', alignItems: 'center', gap: 10,
           }}>
@@ -448,9 +462,9 @@ const FEATURES = [
 
 function FeaturesSection() {
   return (
-    <section id="features" style={{ position: 'relative', zIndex: 2, padding: '120px 0' }}>
-      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '0 32px' }}>
-        <div style={{ marginBottom: 64, maxWidth: 720 }}>
+    <section id="features" className="jc-features-section" style={{ position: 'relative', zIndex: 2, padding: '120px 0' }}>
+      <div className="jc-feat-container" style={{ maxWidth: 1240, margin: '0 auto', padding: '0 32px' }}>
+        <div className="jc-section-head" style={{ marginBottom: 64, maxWidth: 720 }}>
           <div style={{
             fontFamily: T.mono, fontSize: 11.5, color: T.inkDim,
             letterSpacing: '0.04em', marginBottom: 18,
@@ -473,14 +487,14 @@ function FeaturesSection() {
 
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {FEATURES.map(f => (
-            <article key={f.num} style={{
+            <article key={f.num} className="jc-feature" style={{
               display: 'grid', gridTemplateColumns: '80px 1fr 1fr',
               gap: 40, padding: '56px 0',
               borderTop: `1px solid ${T.line}`,
               alignItems: 'start',
             }}>
               {/* Number */}
-              <div style={{ fontFamily: T.mono, fontSize: 11.5, color: T.inkFaint, letterSpacing: '0.05em', paddingTop: 6 }}>{f.num}</div>
+              <div className="jc-feat-num" style={{ fontFamily: T.mono, fontSize: 11.5, color: T.inkFaint, letterSpacing: '0.05em', paddingTop: 6 }}>{f.num}</div>
 
               {/* Text */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: '44ch' }}>
@@ -523,9 +537,9 @@ function HowItWorks() {
     { n: 'STEP 03', t: <>Open Copilot. <em style={{ fontFamily: T.serif, fontStyle: 'italic', fontWeight: 400 }}>Crack it.</em></>, d: "When the call starts, Copilot listens and feeds you structured answers in real time. You sound prepared because you actually are." },
   ];
   return (
-    <section id="how" style={{ position: 'relative', zIndex: 2, paddingBottom: 120 }}>
-      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '0 32px' }}>
-        <div style={{ marginBottom: 64, maxWidth: 720 }}>
+    <section id="how" className="jc-how-section" style={{ position: 'relative', zIndex: 2, paddingBottom: 120 }}>
+      <div className="jc-how-container" style={{ maxWidth: 1240, margin: '0 auto', padding: '0 32px' }}>
+        <div className="jc-section-head" style={{ marginBottom: 64, maxWidth: 720 }}>
           <div style={{ fontFamily: T.mono, fontSize: 11.5, color: T.inkDim, letterSpacing: '0.04em', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ width: 16, height: 1, background: T.accent, display: 'inline-block' }} />
             <span style={{ color: T.accent }}>02</span> · HOW IT WORKS
@@ -534,13 +548,13 @@ function HowItWorks() {
             Set it up <em style={{ fontFamily: T.serif, fontStyle: 'italic', fontWeight: 400 }}>once.</em><br />Run every loop on rails.
           </h2>
         </div>
-        <div style={{
+        <div className="jc-steps-grid" style={{
           display: 'grid', gridTemplateColumns: 'repeat(3,1fr)',
           gap: 1, background: T.line, border: `1px solid ${T.line}`,
           borderRadius: 10, overflow: 'hidden',
         }}>
           {steps.map(s => (
-            <div key={s.n} style={{ background: T.bg2, padding: '36px 32px', display: 'flex', flexDirection: 'column', gap: 14, minHeight: 240 }}>
+            <div key={s.n} className="jc-step" style={{ background: T.bg2, padding: '36px 32px', display: 'flex', flexDirection: 'column', gap: 14, minHeight: 240 }}>
               <div style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, letterSpacing: '0.05em' }}>{s.n}</div>
               <div style={{ fontSize: 22, lineHeight: 1.15, letterSpacing: '-0.02em', fontWeight: 500, fontFamily: T.sans, color: T.ink }}>{s.t}</div>
               <div style={{ fontSize: 14, lineHeight: 1.55, color: T.inkDim, marginTop: 'auto' }}>{s.d}</div>
@@ -555,8 +569,8 @@ function HowItWorks() {
 // ─── CTA ──────────────────────────────────────────────────────────────────────
 function CTASection() {
   return (
-    <div style={{ position: 'relative', zIndex: 2, margin: '40px 32px 60px' }}>
-      <div style={{
+    <div className="jc-cta-outer" style={{ position: 'relative', zIndex: 2, margin: '40px 32px 60px' }}>
+      <div className="jc-cta-box" style={{
         border: `1px solid ${T.line}`, borderRadius: 14,
         background: T.bg2, padding: '80px 56px',
         overflow: 'hidden', position: 'relative',
@@ -582,7 +596,6 @@ function CTASection() {
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
             <BtnPrimary href="/auth/linkedin">Start cracking <span>→</span></BtnPrimary>
-            <BtnGhost>Book a 15-min walkthrough</BtnGhost>
           </div>
         </div>
       </div>
@@ -593,9 +606,9 @@ function CTASection() {
 // ─── Footer ───────────────────────────────────────────────────────────────────
 function Footer() {
   return (
-    <footer style={{ position: 'relative', zIndex: 2, borderTop: `1px solid ${T.line}`, padding: '40px 32px' }}>
-      <div style={{ maxWidth: 1240, margin: '0 auto', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 40, fontFamily: T.mono, fontSize: 12 }}>
-        <div>
+    <footer className="jc-foot" style={{ position: 'relative', zIndex: 2, borderTop: `1px solid ${T.line}`, padding: '40px 32px' }}>
+      <div className="jc-foot-grid" style={{ maxWidth: 1240, margin: '0 auto', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 40, fontFamily: T.mono, fontSize: 12 }}>
+        <div className="jc-foot-brand">
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, fontWeight: 600, letterSpacing: '-0.02em', fontSize: 17, fontFamily: T.sans, marginBottom: 14 }}>
             JobCracker
             <span style={{ fontFamily: T.mono, fontSize: 11, fontWeight: 600, color: T.inkDim, border: `1px solid ${T.line2}`, padding: '2px 6px', borderRadius: 4 }}>v2.0</span>
@@ -607,17 +620,17 @@ function Footer() {
         {[
           { head: 'Product', links: ['Copilot','Mock Interview','Job Search','CV Builder','LinkedIn'] },
           { head: 'Resources', links: ['Changelog','Docs','Blog','STAR templates','Discord'] },
-          { head: 'Company', links: ['Pricing','About','Privacy','Terms','hello@jobcracker.app'] },
+          { head: 'Company', links: ['About','Privacy','Terms','hello@jobcracker.app'] },
         ].map(col => (
           <div key={col.head}>
             <h4 style={{ fontFamily: T.sans, fontSize: 11, color: T.inkDim, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 14, fontWeight: 500 }}>{col.head}</h4>
             {col.links.map(l => (
-              <a key={l} href="#" style={{ display: 'block', color: T.ink2, padding: '4px 0', textDecoration: 'none' }}>{l}</a>
+              <span key={l} style={{ display: 'block', color: T.ink2, padding: '4px 0' }}>{l}</span>
             ))}
           </div>
         ))}
       </div>
-      <div style={{ maxWidth: 1240, margin: '40px auto 0', paddingTop: 24, borderTop: `1px solid ${T.line}`, display: 'flex', justifyContent: 'space-between', fontFamily: T.mono, fontSize: 11.5, color: T.inkDim }}>
+      <div className="jc-foot-bot" style={{ maxWidth: 1240, margin: '40px auto 0', paddingTop: 24, borderTop: `1px solid ${T.line}`, display: 'flex', justifyContent: 'space-between', fontFamily: T.mono, fontSize: 11.5, color: T.inkDim }}>
         <div>© 2026 JobCracker · all rights reserved</div>
         <div>● operational · 99.98% uptime · 30d</div>
       </div>
@@ -640,8 +653,8 @@ export function LoginPage({ linkedinError, onClearLinkedinError }: LoginPageProp
       <Nav />
 
       {/* Hero */}
-      <section style={{ position: 'relative', zIndex: 2, padding: '80px 0 60px' }}>
-        <div style={{ maxWidth: 1240, margin: '0 auto', padding: '0 32px', display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 56, alignItems: 'center' }}>
+      <section className="jc-hero-section" style={{ position: 'relative', zIndex: 2, padding: '80px 0 60px' }}>
+        <div className="jc-hero-grid" style={{ maxWidth: 1240, margin: '0 auto', padding: '0 32px', display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 56, alignItems: 'center' }}>
           <div>
             {/* Eyebrow */}
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontFamily: T.mono, fontSize: 11.5, color: T.inkDim, marginBottom: 28, letterSpacing: '0.02em' }}>
@@ -677,12 +690,10 @@ export function LoginPage({ linkedinError, onClearLinkedinError }: LoginPageProp
 
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: 40 }}>
               <BtnPrimary href="/auth/linkedin">Start free <span>→</span></BtnPrimary>
-              <BtnGhost>▸ Watch 60s demo</BtnGhost>
-              <BtnLink>Read the changelog</BtnLink>
             </div>
 
             {/* Stat strip */}
-            <div style={{
+            <div className="jc-hero-meta" style={{
               display: 'flex', gap: 32, fontFamily: T.mono, fontSize: 11.5, color: T.inkDim,
               paddingTop: 24, borderTop: `1px solid ${T.line}`,
             }}>

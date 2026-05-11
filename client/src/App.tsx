@@ -33,9 +33,10 @@ function isProfileComplete(p: CandidateProfile): boolean {
 
 // ── Top Header ────────────────────────────────────────────────────────────────
 
-function AppHeader({ profile, onChangeProfile }: {
+function AppHeader({ profile, onChangeProfile, onViewProfile }: {
   profile: CandidateProfile;
   onChangeProfile: () => void;
+  onViewProfile: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -86,9 +87,20 @@ function AppHeader({ profile, onChangeProfile }: {
         {menuOpen && (
           <div className="absolute right-0 top-[calc(100%+6px)] w-44 rounded-2xl border overflow-hidden z-50"
             style={{ background: '#161b27', borderColor: 'rgba(255,255,255,0.1)', boxShadow: '0 16px 40px rgba(0,0,0,0.6)' }}>
+            <div className="px-4 py-2.5 border-b" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+              <p className="text-xs font-semibold text-white truncate">{profile.name}</p>
+              {profile.email && <p className="text-[11px] text-slate-500 truncate">{profile.email}</p>}
+            </div>
+            <button
+              onClick={() => { onViewProfile(); setMenuOpen(false); }}
+              className="flex items-center gap-2.5 w-full px-4 py-3 text-sm text-slate-400 hover:bg-white/5 hover:text-white transition-colors text-left"
+            >
+              <UserCircle2 size={14} /> Profile
+            </button>
             <button
               onClick={() => { onChangeProfile(); setMenuOpen(false); }}
-              className="flex items-center gap-2.5 w-full px-4 py-3 text-sm text-slate-400 hover:bg-white/5 hover:text-red-400 transition-colors text-left"
+              className="flex items-center gap-2.5 w-full px-4 py-3 text-sm text-slate-400 hover:bg-white/5 hover:text-red-400 transition-colors text-left border-t"
+              style={{ borderColor: 'rgba(255,255,255,0.07)' }}
             >
               <LogOut size={14} /> Sign out
             </button>
@@ -386,7 +398,7 @@ export default function App() {
         className="flex flex-col overflow-hidden"
         style={{ height: '100dvh', background: '#F3F2EF' }}
       >
-        <AppHeader profile={profile} onChangeProfile={handleChangeProfile} />
+        <AppHeader profile={profile} onChangeProfile={handleChangeProfile} onViewProfile={() => setActiveTab('profile')} />
 
         <div className="flex-1 flex overflow-hidden min-h-0">
           {/* Sidebar — desktop only */}

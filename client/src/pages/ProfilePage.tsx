@@ -270,9 +270,9 @@ export function ProfilePage({ profile, onUpdate }: ProfilePageProps) {
       <div className="max-w-2xl mx-auto px-4 sm:px-5 py-6 space-y-4">
 
         {/* ── Profile header card ─────────────────────────────────────────── */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm">
           {/* Cover banner */}
-          <div className="h-24 sm:h-28 relative"
+          <div className="h-24 sm:h-28 relative rounded-t-2xl overflow-hidden"
             style={{ background: 'linear-gradient(135deg,#4F46E5 0%,#7C3AED 60%,#9333EA 100%)' }}>
             <div className="absolute inset-0 opacity-10"
               style={{ backgroundImage: 'radial-gradient(circle at 30% 50%, white 1px, transparent 1px), radial-gradient(circle at 70% 80%, white 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
@@ -306,7 +306,7 @@ export function ProfilePage({ profile, onUpdate }: ProfilePageProps) {
 
           {/* Avatar + identity */}
           <div className="px-5 pb-5">
-            <div className="flex items-end justify-between -mt-10 mb-4">
+            <div className="flex items-end justify-between -mt-10 mb-4 relative z-10">
               {/* Avatar */}
               <div className="w-20 h-20 rounded-2xl ring-4 ring-white shadow-md overflow-hidden shrink-0"
                 style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)' }}>
