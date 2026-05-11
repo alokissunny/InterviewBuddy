@@ -810,6 +810,46 @@ app.post('/api/cv/tailor', async (req, res) => {
   }
 });
 
+// ─── Job Description Parser ───────────────────────────────────────────────────
+app.post('/api/jobs/parse-jd', async (req, res) => {
+  const { jd } = req.body;
+  if (!jd || jd.trim().split(/\s+/).length < 10) {
+    return res.status(400).json({ error: 'Job description is too short.' });
+  }
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 400,
+      messages: [{
+        role: 'user',
+        content: `Extract structured info from this job description. Return ONLY valid JSON, no markdown fences:
+{
+  "title": "job title",
+  "company": "company name or empty string",
+  "location": "location or empty string",
+  "tags": ["up to 8 key skills or technologies"]
+}
+
+Job description:
+${jd.slice(0, 3000)}`,
+      }],
+    });
+
+    let text = response.content[0].text.trim();
+    if (text.startsWith('```')) text = text.replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
+    const parsed = JSON.parse(text);
+    res.json({
+      title:    parsed.title    || '',
+      company:  parsed.company  || '',
+      location: parsed.location || '',
+      tags:     Array.isArray(parsed.tags) ? parsed.tags.slice(0, 8) : [],
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message || 'Failed to parse job description' });
+  }
+});
+
 // ─── Connection Message Generator ────────────────────────────────────────────
 app.post('/api/connections/message', async (req, res) => {
   const { connection, userProfile, messageType } = req.body;

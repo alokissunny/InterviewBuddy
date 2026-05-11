@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Mic, Search, Users, Zap, LogOut, ChevronDown,
   Briefcase, GraduationCap, Code2, Edit3, MapPin,
-  UserCircle2,
+  UserCircle2, ClipboardList,
 } from 'lucide-react';
 import { CandidateProfile } from './types';
 import { LoginPage, CVOnboardingPage } from './pages/SetupPage';
@@ -10,8 +10,9 @@ import { InterviewPage } from './pages/InterviewPage';
 import { JobsPage } from './pages/JobsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ConnectionsPage } from './pages/ConnectionsPage';
+import { MockInterviewPage } from './pages/MockInterviewPage';
 
-export type MainTab = 'interview' | 'jobs' | 'connections' | 'profile';
+export type MainTab = 'interview' | 'mock' | 'jobs' | 'connections' | 'profile';
 type AppPage = 'login' | 'cv-onboarding' | 'main';
 
 const PROFILE_KEY = 'jobcracker_profile';
@@ -113,9 +114,10 @@ function AppHeader({ profile, onChangeProfile, onViewProfile }: {
 
 // ── Sidebar (desktop only) ───────────────────────────────────────────────────
 
-const NAV_ITEMS: { id: MainTab; label: string; icon: React.ReactNode }[] = [
+const NAV_ITEMS: { id: MainTab; label: string; icon: React.ReactNode; soon?: boolean }[] = [
   { id: 'interview',   label: 'Interview',   icon: <Mic size={18} /> },
-  { id: 'jobs',        label: 'Jobs',        icon: <Search size={18} /> },
+  { id: 'mock',        label: 'Mock',        icon: <ClipboardList size={18} /> },
+  { id: 'jobs',        label: 'Jobs',        icon: <Search size={18} />, soon: true },
   { id: 'connections', label: 'Connections', icon: <Users size={18} /> },
 ];
 
@@ -237,16 +239,19 @@ function Sidebar({ profile, activeTab, onTabChange }: {
             className={`flex items-center gap-3 w-full px-4 py-3 text-sm font-medium transition-all text-left ${
               activeTab === item.id
                 ? 'text-indigo-600 bg-indigo-50'
+                : item.soon
+                ? 'text-gray-400 hover:bg-gray-50'
                 : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
             }`}
           >
-            <span className={activeTab === item.id ? 'text-indigo-500' : 'text-gray-400'}>
+            <span className={activeTab === item.id ? 'text-indigo-500' : 'text-gray-300'}>
               {item.icon}
             </span>
             {item.label}
-            {activeTab === item.id && (
-              <span className="ml-auto w-1.5 h-5 rounded-full bg-indigo-500" />
-            )}
+            {item.soon
+              ? <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-500 border border-amber-100">Soon</span>
+              : activeTab === item.id && <span className="ml-auto w-1.5 h-5 rounded-full bg-indigo-500" />
+            }
           </button>
         ))}
       </nav>
@@ -260,11 +265,12 @@ function Sidebar({ profile, activeTab, onTabChange }: {
 
 // ── Bottom Navigation (mobile only) ─────────────────────────────────────────
 
-const BOTTOM_NAV_ITEMS: { id: MainTab; label: string; Icon: React.ElementType }[] = [
-  { id: 'interview',   label: 'Coach',   Icon: Mic          },
-  { id: 'jobs',        label: 'Jobs',    Icon: Search       },
-  { id: 'connections', label: 'Network', Icon: Users        },
-  { id: 'profile',     label: 'Profile', Icon: UserCircle2  },
+const BOTTOM_NAV_ITEMS: { id: MainTab; label: string; Icon: React.ElementType; soon?: boolean }[] = [
+  { id: 'interview',   label: 'Coach',   Icon: Mic           },
+  { id: 'mock',        label: 'Mock',    Icon: ClipboardList },
+  { id: 'jobs',        label: 'Jobs',    Icon: Search,        soon: true },
+  { id: 'connections', label: 'Network', Icon: Users         },
+  { id: 'profile',     label: 'Profile', Icon: UserCircle2   },
 ];
 
 function BottomNav({ activeTab, onTabChange }: {
@@ -281,14 +287,19 @@ function BottomNav({ activeTab, onTabChange }: {
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
-      {BOTTOM_NAV_ITEMS.map(({ id, label, Icon }) => {
+      {BOTTOM_NAV_ITEMS.map(({ id, label, Icon, soon }) => {
         const active = activeTab === id;
         return (
           <button
             key={id}
             onClick={() => onTabChange(id)}
-            className="flex-1 flex flex-col items-center justify-center gap-0.5 pt-3 pb-2.5 min-h-[56px] transition-all"
+            className="flex-1 flex flex-col items-center justify-center gap-0.5 pt-3 pb-2.5 min-h-[56px] transition-all relative"
           >
+            {soon && (
+              <span className="absolute top-1.5 right-1 text-[8px] font-bold px-1 py-0.5 rounded-full bg-amber-500/20 text-amber-400 leading-none">
+                Soon
+              </span>
+            )}
             <div className={`relative flex items-center justify-center w-10 h-7 rounded-xl transition-all duration-200 ${
               active ? 'bg-indigo-500/20' : ''
             }`}>
@@ -300,7 +311,7 @@ function BottomNav({ activeTab, onTabChange }: {
               )}
               <Icon
                 size={19}
-                className={`relative transition-colors duration-200 ${active ? 'text-indigo-400' : 'text-slate-500'}`}
+                className={`relative transition-colors duration-200 ${active ? 'text-indigo-400' : soon ? 'text-slate-600' : 'text-slate-500'}`}
               />
             </div>
             <span className={`text-[10px] font-semibold tracking-wide leading-none transition-colors duration-200 ${
@@ -408,7 +419,23 @@ export default function App() {
             {activeTab === 'interview' && (
               <InterviewPage profile={profile} onReset={handleChangeProfile} onChangeProfile={handleChangeProfile} />
             )}
-            {activeTab === 'jobs' && <JobsPage profile={profile} />}
+            {activeTab === 'mock' && <MockInterviewPage profile={profile} />}
+            {activeTab === 'jobs' && (
+              <div className="h-full flex flex-col items-center justify-center gap-4 p-8 bg-[#F3F2EF]">
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-white border border-gray-200 shadow-sm">
+                  <Search size={28} className="text-gray-300" />
+                </div>
+                <div className="text-center space-y-1">
+                  <h2 className="text-lg font-bold text-gray-800">Job Search — Coming Soon</h2>
+                  <p className="text-sm text-gray-400 max-w-xs leading-relaxed">
+                    Smart job matching, visa + comp filters, and weekly digests are on the way. Use Mock Interview in the meantime to prep for roles you've already found.
+                  </p>
+                </div>
+                <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-500 border border-indigo-100">
+                  Coming soon
+                </span>
+              </div>
+            )}
             {activeTab === 'connections' && <ConnectionsPage userProfile={profile} />}
             {activeTab === 'profile' && (
               <ProfilePage profile={profile} onChangeProfile={handleChangeProfile} onUpdate={handleUpdateProfile} />
