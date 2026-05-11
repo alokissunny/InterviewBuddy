@@ -320,6 +320,7 @@ Listen to the audio and return this JSON:
   "transcript": "verbatim transcription of what was said",
   "needsResponse": true,
   "type": "Behavioral | Technical | Situational | Background | Other",
+  "answer": "3-5 sentence direct answer the candidate can say almost verbatim",
   "keywords": ["keyword1", "keyword2"],
   "pointers": [
     {
@@ -339,29 +340,30 @@ TRANSCRIPTION RULES:
 
 COACHING RULES:
 
-RULE 1 — POINTERS (5-6 total, each has a cue AND a detail):
-- cue: ≤6 words — the at-a-glance cheat-sheet reminder shown on screen
-- detail: 2-3 sentences — tactical HOW-TO: how to structure this point, what to say, which example to open with
-- If question is about their background: cue references a specific company/project/tech; detail explains how to frame it
-    cue: "[Company X] — latency cut story"
-    detail: "Open with the scale of the problem, then name the specific architectural change you made. Close with the measurable result — latency cut, throughput gained, or incident rate reduced."
-- If question is general (weakness, motivation, salary, culture, hypothetical): cue gives the tactic; detail gives the script
-    cue: "Weakness → name it + what changed"
-    detail: "Name a real weakness without hedging. Then immediately pivot to one concrete thing you did about it — a course, a process change, a habit. The pivot is what shows self-awareness."
+RULE 0 — DIRECT ANSWER (most important field):
+- Write 3-5 sentences the candidate can say almost verbatim in the interview
+- First person, past tense for stories, present tense for opinions/motivation
+- Ground it in their actual background — reference their real companies, projects, or tech stack
+- Structure: set the context in one sentence → state the action/decision → give the result or insight
+- Do NOT write "Talk about X" or "Mention Y" — write what they should actually say
+- Example for "tell me about a conflict":
+  "In Q3 at Stripe, I was leading the API deprecation when our Eng Lead pushed back hard on the timeline. I pulled the usage data, found 3.2% of revenue was at risk, and proposed a phased sunset instead of a hard cutoff. We shipped on time with zero churn, and that became the team's template for all future migrations."
+- Example for "why this company":
+  "I've been following your work on alignment since the Claude 2 paper. What drew me here specifically is that you're the only lab I've seen where safety research ships in the same quarter as capability work — that's the environment I want to build in."
+
+RULE 1 — POINTERS (3-4 supporting cues, each with a cue AND a detail):
+- These are glanceable follow-up reminders to complement the direct answer
+- cue: ≤6 words — the at-a-glance reminder
+- detail: 2-3 sentences — extra depth or alternative angle if the interviewer probes further
 - BANNED from cues: "Use STAR", "Be specific", "Quantify impact", "Show enthusiasm", "Be authentic"
 
-RULE 2 — KEYWORDS (5-7, question-specific answer triggers):
-- Keywords are the exact words/phrases the candidate MUST say in their answer to this question
-- They are NOT profile skills repeated back — they are answer-quality signals for THIS question
+RULE 2 — KEYWORDS (4-6, question-specific answer triggers):
+- Exact words/phrases the candidate MUST say — answer-quality signals for THIS question
 - Ask: "What words would a strong answer to THIS question contain?"
-    Q: "Tell me about a conflict" → keywords: de-escalation, shared goal, direct conversation, outcome, learned
-    Q: "Why this company?" → keywords: [specific product/mission], growth trajectory, team fit, long-term
-    Q: "Design a rate limiter" → keywords: token bucket, sliding window, Redis, distributed, failure mode
-    Q: "Biggest weakness?" → keywords: self-aware, concrete action, measurable progress, ongoing
 - NEVER output the candidate's generic skills list as keywords
 
 RULE 3 — AVOID:
-- One sharp, question-specific mistake — not "being too vague"
+- One sharp, question-specific mistake
     ✓ "Don't pick a weakness that sounds like a strength"
     ✓ "Don't start with context — lead with the decision"
 
@@ -413,8 +415,8 @@ Return ONLY valid JSON — no markdown, no explanation`;
     const transcript = (parsed.transcript || '').trim();
     const wordCount  = transcript.split(/\s+/).filter(Boolean).length;
 
-    // Hard gate: fewer than 10 real words = silence/noise/hallucination — suppress entirely
-    const needsResponse = wordCount >= 10 && !!parsed.needsResponse;
+    // Hard gate: fewer than 7 real words = silence/noise/hallucination — suppress entirely
+    const needsResponse = wordCount >= 7 && !!parsed.needsResponse;
 
     console.log('[Gemini] transcript:', `"${transcript.slice(0, 80)}"`, `(${wordCount} words)`);
     console.log('[Gemini] needsResponse:', needsResponse, '| type:', parsed.type || '—');
@@ -426,10 +428,11 @@ Return ONLY valid JSON — no markdown, no explanation`;
     res.json({
       transcript,
       needsResponse,
-      type:     needsResponse ? (parsed.type  || '') : '',
+      type:     needsResponse ? (parsed.type   || '') : '',
+      answer:   needsResponse ? (parsed.answer || '') : '',
       keywords: needsResponse ? (Array.isArray(parsed.keywords) ? parsed.keywords : []) : [],
       pointers: needsResponse ? (Array.isArray(parsed.pointers) ? parsed.pointers : []) : [],
-      avoid:    needsResponse ? (parsed.avoid || '') : '',
+      avoid:    needsResponse ? (parsed.avoid  || '') : '',
     });
   } catch (err) {
     console.error('[Gemini] fetch error:', err.message);

@@ -8,6 +8,7 @@ export interface CoachingPointer {
 
 export interface CoachingResult {
   type: string;
+  answer: string;
   keywords: string[];
   pointers: CoachingPointer[];
   avoid: string;
@@ -102,6 +103,7 @@ export function useGeminiCapture(
         );
         onCoaching({
           type:     data.type     || '',
+          answer:   data.answer   || '',
           keywords: data.keywords || [],
           pointers,
           avoid:    data.avoid    || '',

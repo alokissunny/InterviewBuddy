@@ -85,24 +85,35 @@ function TerminalEntry({ entry, dimmed }: { entry: CoachingEntry; dimmed: boolea
         )}
       </div>
 
-      {/* Answer pointers */}
-      {result.pointers.length > 0 && (
+      {/* Direct answer */}
+      {result.answer && (
         <div style={{
           borderLeft: `2px solid ${TK.accent}`,
-          paddingLeft: 14, paddingTop: 8, paddingBottom: 8, paddingRight: 12,
-          background: 'rgba(0,217,122,0.03)',
+          paddingLeft: 14, paddingTop: 10, paddingBottom: 10, paddingRight: 12,
+          background: 'rgba(0,217,122,0.05)',
           borderRadius: '0 6px 6px 0',
+        }}>
+          <div style={{ fontSize: 9, letterSpacing: '0.16em', color: TK.accent, marginBottom: 6, fontWeight: 700 }}>SAY THIS</div>
+          <div style={{ color: TK.ink, fontSize: 14, lineHeight: 1.65, fontWeight: 400 }}>{result.answer}</div>
+        </div>
+      )}
+
+      {/* Supporting pointers */}
+      {result.pointers.length > 0 && (
+        <div style={{
+          paddingLeft: 14, paddingTop: 8, paddingBottom: 4,
+          borderLeft: `2px solid ${TK.border2}`,
           display: 'flex', flexDirection: 'column', gap: 6,
         }}>
-          <div style={{ fontSize: 9, letterSpacing: '0.16em', color: TK.inkFaint, marginBottom: 2 }}>ANSWER</div>
+          <div style={{ fontSize: 9, letterSpacing: '0.16em', color: TK.inkFaint, marginBottom: 2 }}>IF PROBED</div>
           {result.pointers.map((p, i) => (
             <div key={i}
               onClick={() => !dimmed && setOpenPtr(openPtr === i ? null : i)}
               style={{ paddingLeft: 14, position: 'relative', cursor: p.detail && !dimmed ? 'pointer' : 'default' }}>
-              <span style={{ position: 'absolute', left: 0, top: 1, color: TK.accent, fontSize: 11 }}>▸</span>
-              <span style={{ color: TK.ink, fontWeight: 600, fontSize: 15 }}>{p.cue}</span>
+              <span style={{ position: 'absolute', left: 0, top: 1, color: TK.inkDim, fontSize: 11 }}>▸</span>
+              <span style={{ color: TK.inkDim, fontWeight: 600, fontSize: 14 }}>{p.cue}</span>
               {openPtr === i && p.detail && (
-                <div style={{ color: TK.inkDim, fontSize: 14, marginTop: 4, lineHeight: 1.55, fontWeight: 400 }}>{p.detail}</div>
+                <div style={{ color: TK.inkDim, fontSize: 13, marginTop: 4, lineHeight: 1.55, fontWeight: 400 }}>{p.detail}</div>
               )}
             </div>
           ))}
