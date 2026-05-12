@@ -390,9 +390,9 @@ export default function App() {
 
   const handleChangeProfile = () => {
     localStorage.removeItem(PROFILE_KEY);
-    setProfile(null);
-    setPendingProfile(null);
-    setPage('login');
+    // Hard reload to root — clears all React state and ensures the LinkedIn
+    // button works from a clean page (no stale OAuth state, no cached useEffect)
+    window.location.href = '/';
   };
 
   if (page === 'login') {
