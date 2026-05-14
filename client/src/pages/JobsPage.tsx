@@ -235,14 +235,14 @@ export function JobsPage({ profile }: JobsPageProps) {
         throw new Error(res.ok ? 'Server response was empty — the request may have timed out' : `Server error ${res.status}`);
       }
       if (!res.ok) throw new Error(String(data.error) || `Error ${res.status}`);
-      const newJobs = (data.jobs || []).map(normaliseJob);
+      const newJobs = (data.jobs as Record<string, unknown>[] || []).map(normaliseJob);
       setJobs(prev => {
         if (!append) return newJobs;
         const seen = new Set(prev.map((j: Job) => j.id));
         return [...prev, ...newJobs.filter((j: Job) => !seen.has(j.id))];
       });
-      setHasMore(append ? newJobs.length > 0 : (data.hasMore ?? newJobs.length > 0));
-      setTotal(data.total ?? newJobs.length);
+      setHasMore(append ? newJobs.length > 0 : Boolean(data.hasMore ?? newJobs.length > 0));
+      setTotal((data.total as number) ?? newJobs.length);
       setPage(pageNum);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed');
