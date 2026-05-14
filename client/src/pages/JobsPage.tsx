@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Loader2, AlertCircle, Briefcase, MapPin, SlidersHorizontal, RefreshCw, ChevronDown, X } from 'lucide-react';
+import { Search, Loader2, AlertCircle, Briefcase, RefreshCw, ChevronDown, X } from 'lucide-react';
 import { CandidateProfile } from '../types';
 import { JobCard, Job } from '../components/JobCard';
 
@@ -17,9 +17,6 @@ interface SearchPrefs {
 
 const PREFS_KEY = 'jobcracker_job_prefs';
 
-const JOB_TYPES = ['', 'full-time', 'part-time', 'contract', 'internship'];
-const EXP_LEVELS = ['', 'internship', 'entry-level', 'associate', 'mid-senior', 'director', 'executive'];
-const DATE_OPTIONS = ['', 'Past 24 hours', 'Past Week', 'Past Month'];
 
 function normaliseJob(raw: Record<string, unknown>): Job {
   return {
@@ -185,7 +182,6 @@ function JobTitleTypeahead({ value, onChange, onSubmit }: TypeaheadProps) {
   );
 }
 
-const selectCls = 'w-full bg-white border border-gray-300 focus:border-[#4F46E5] rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none cursor-pointer hover:border-gray-400 transition-colors';
 
 export function JobsPage({ profile }: JobsPageProps) {
   const [prefs, setPrefs] = useState<SearchPrefs>(() => {
@@ -213,11 +209,9 @@ export function JobsPage({ profile }: JobsPageProps) {
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-
-  const updatePref = (key: keyof SearchPrefs, value: string) => {
+  const updateKeywords = (v: string) => {
     setPrefs(p => {
-      const next = { ...p, [key]: value };
+      const next = { ...p, keywords: v };
       localStorage.setItem(PREFS_KEY, JSON.stringify(next));
       return next;
     });
@@ -258,59 +252,33 @@ export function JobsPage({ profile }: JobsPageProps) {
     }
   };
 
-  const search = () => { setFiltersOpen(false); fetchJobs(0, false); };
+  const search  = () => fetchJobs(0, false);
   const loadMore = () => fetchJobs(page + 1, true);
 
+  const isMount = useRef(true);
   useEffect(() => {
-    if (prefs.keywords.trim()) fetchJobs(0, false);
+    if (isMount.current) {
+      isMount.current = false;
+      if (prefs.keywords.trim()) fetchJobs(0, false);
+      return;
+    }
+    if (!prefs.keywords.trim()) return;
+    const t = setTimeout(() => fetchJobs(0, false), 500);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const hasActiveFilters = prefs.jobType || prefs.experienceLevel || (prefs.datePosted && prefs.datePosted !== 'Past 24 hours');
+  }, [prefs.keywords]);
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-[#F3F2EF]">
       {/* Search bar */}
-      <div className="shrink-0 px-4 py-3 bg-white border-b border-gray-200 shadow-sm">
-
-        {/* Primary row: keywords + location + search on desktop / keywords + search on mobile */}
+      <div className="shrink-0 px-4 py-3 bg-white border-b border-gray-200 shadow-sm space-y-2.5">
+        {/* Keywords + Search button */}
         <div className="flex gap-2 items-center">
-          {/* Keywords — typeahead */}
           <JobTitleTypeahead
             value={prefs.keywords}
-            onChange={v => updatePref('keywords', v)}
+            onChange={updateKeywords}
             onSubmit={search}
           />
-
-          {/* Location — desktop only inline */}
-          <div className="hidden sm:flex relative flex-1 min-w-0">
-            <MapPin size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            <input
-              type="text"
-              value={prefs.location}
-              onChange={e => updatePref('location', e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && search()}
-              placeholder="City or Remote"
-              className="w-full bg-gray-50 border border-gray-300 hover:border-gray-400 focus:border-[#4F46E5] rounded-xl pl-9 pr-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-colors"
-            />
-          </div>
-
-          {/* Filters toggle (mobile) */}
-          <button
-            onClick={() => setFiltersOpen(v => !v)}
-            className={`sm:hidden relative flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
-              filtersOpen || hasActiveFilters
-                ? 'bg-indigo-600 text-white border-indigo-600'
-                : 'bg-gray-50 text-gray-600 border-gray-300'
-            }`}
-          >
-            <SlidersHorizontal size={14} />
-            {hasActiveFilters && !filtersOpen && (
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-indigo-500 rounded-full" />
-            )}
-          </button>
-
-          {/* Search button */}
           <button
             onClick={search}
             disabled={isLoading || !prefs.keywords.trim()}
@@ -321,63 +289,19 @@ export function JobsPage({ profile }: JobsPageProps) {
           </button>
         </div>
 
-        {/* Mobile: location row */}
-        <div className="sm:hidden mt-2 relative">
-          <MapPin size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-          <input
-            type="text"
-            value={prefs.location}
-            onChange={e => updatePref('location', e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && search()}
-            placeholder="City or Remote"
-            className="w-full bg-gray-50 border border-gray-300 hover:border-gray-400 focus:border-[#4F46E5] rounded-xl pl-9 pr-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-colors"
-          />
-        </div>
-
-        {/* Advanced filters — always visible on desktop, collapsible on mobile */}
-        <div className={`${filtersOpen ? 'block' : 'hidden'} sm:block mt-3 sm:mt-2.5`}>
-          <div className="flex gap-2 flex-wrap sm:flex-nowrap sm:items-center">
-            <div className="flex gap-2 w-full sm:w-auto flex-1 sm:flex-none">
-              <div className="flex-1 sm:w-28">
-                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1 block sm:hidden">Type</label>
-                <select value={prefs.jobType} onChange={e => updatePref('jobType', e.target.value)} className={selectCls}>
-                  {JOB_TYPES.map(t => <option key={t} value={t}>{t || 'Any type'}</option>)}
-                </select>
-              </div>
-              <div className="flex-1 sm:w-32">
-                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1 block sm:hidden">Level</label>
-                <select value={prefs.experienceLevel} onChange={e => updatePref('experienceLevel', e.target.value)} className={selectCls}>
-                  {EXP_LEVELS.map(l => <option key={l} value={l}>{l || 'Any level'}</option>)}
-                </select>
-              </div>
-              <div className="flex-1 sm:w-32">
-                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1 block sm:hidden">Posted</label>
-                <select value={prefs.datePosted} onChange={e => updatePref('datePosted', e.target.value)} className={selectCls}>
-                  {DATE_OPTIONS.map(d => <option key={d} value={d}>{d || 'Any time'}</option>)}
-                </select>
-              </div>
-            </div>
-
-            {/* Desktop label chips */}
-            <div className="hidden sm:flex items-center gap-1.5 text-xs text-gray-400">
-              <SlidersHorizontal size={11} />
-              Filters
-            </div>
-
-            {/* Mobile: clear filters */}
-            {hasActiveFilters && (
-              <button
-                onClick={() => {
-                  updatePref('jobType', '');
-                  updatePref('experienceLevel', '');
-                  updatePref('datePosted', 'Past 24 hours');
-                }}
-                className="sm:hidden flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 px-2 py-1.5 rounded-lg border border-gray-200 bg-white"
-              >
-                <X size={11} /> Clear
-              </button>
-            )}
-          </div>
+        {/* Frozen filter badges */}
+        <div className="flex flex-wrap gap-2">
+          {[
+            { icon: '📍', label: 'India' },
+            { icon: '💼', label: 'Any type' },
+            { icon: '🎯', label: 'Any level' },
+            { icon: '🕐', label: 'Past 24 hours' },
+          ].map(b => (
+            <span key={b.label}
+              className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 border border-gray-200 whitespace-nowrap">
+              {b.icon} {b.label}
+            </span>
+          ))}
         </div>
       </div>
 
