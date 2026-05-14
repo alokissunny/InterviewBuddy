@@ -510,23 +510,52 @@ Respond in this exact format (keep everything very short):
 
 // ─── Job Aggregator ───────────────────────────────────────────────────────────
 const { aggregateJobs, ALL_SOURCES } = require('./jobs/aggregator');
+const { getCacheStats } = require('./jobs/cache');
+const { run: prefetchJobs } = require('./scripts/prefetch-jobs');
+
+// Warm the cache on startup (5 s delay lets the server finish booting),
+// then repeat every 24 h so high-priority roles are always pre-cached.
+const PREFETCH_INTERVAL_MS = 24 * 60 * 60 * 1000;
+setTimeout(() => {
+  prefetchJobs().catch(err => console.error('[Prefetch] Scheduled run failed:', err.message));
+  setInterval(() => {
+    prefetchJobs().catch(err => console.error('[Prefetch] Scheduled run failed:', err.message));
+  }, PREFETCH_INTERVAL_MS).unref();
+}, 5000).unref();
 
 app.get('/api/jobs/status', (_req, res) => {
   res.json({ serverKeyAvailable: true, sources: ALL_SOURCES });
+});
+
+app.get('/api/jobs/cache-stats', (_req, res) => {
+  res.json(getCacheStats());
 });
 
 app.post('/api/jobs/search', async (req, res) => {
   const { keywords, location, jobType, experienceLevel, datePosted, page = 0 } = req.body;
   if (!keywords) return res.status(400).json({ error: 'keywords is required.' });
 
+  // Respond with a JSON error before any upstream proxy can close the connection
+  // with an empty body. 200 s gives the 180 s Apify run headroom to finish.
+  const guard = setTimeout(() => {
+    if (!res.headersSent) {
+      res.status(504).json({ error: 'Job search timed out — please try again. Results will be cached once ready.' });
+    }
+  }, 200000);
+
   try {
-    const { jobs, sourceStats, hasMore } = await aggregateJobs(
+    const { jobs, sourceStats, hasMore, cacheStatus } = await aggregateJobs(
       { keywords, location, jobType, experienceLevel, datePosted, page },
       ALL_SOURCES
     );
-    console.log(`[Jobs] returning ${jobs.length} jobs (page=${page}) for "${keywords}" | hasMore=${hasMore}`);
+    clearTimeout(guard);
+    if (res.headersSent) return;
+    res.setHeader('X-Cache', (cacheStatus || 'miss').toUpperCase());
+    console.log(`[Jobs] returning ${jobs.length} jobs (page=${page}) for "${keywords}" | hasMore=${hasMore} | cache=${cacheStatus}`);
     res.json({ jobs, sourceStats, total: jobs.length, hasMore });
   } catch (err) {
+    clearTimeout(guard);
+    if (res.headersSent) return;
     console.error('Jobs search error:', err.message);
     res.status(500).json({ error: err.message || 'Failed to fetch jobs' });
   }

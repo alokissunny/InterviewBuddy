@@ -13,7 +13,7 @@
 // Output fields: job_id, job_title, company_name, location, job_url, apply_url,
 //   company_logo_url, time_posted, salary_range, employment_type, seniority_level
 
-const { getCache, setCache } = require('../cache');
+const { getWithMeta, setCache } = require('../cache');
 
 // In-flight deduplication: if two identical requests arrive before the first
 // Apify run completes, the second awaits the same Promise instead of starting
@@ -24,7 +24,8 @@ const ACTOR_ID      = 'worldunboxer~rapid-linkedin-scraper';
 const PAGE_SIZE     = 20;
 const SOURCE        = 'linkedin';
 const SOURCE_LABEL  = 'LinkedIn';
-const CACHE_TTL_MS  = 5 * 60 * 1000;   // 5 min — deduplicates React StrictMode double-calls too
+const FRESH_TTL_MS  = 24 * 60 * 60 * 1000;  // 24 h — serve from cache without hitting Apify
+const STALE_TTL_MS  = 24 * 60 * 60 * 1000;  // +24 h — serve stale instantly, refresh in background
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_WAIT_MS      = 180000;        // 3 min max wait
@@ -184,34 +185,66 @@ async function _doFetch({ keywords, location, jobType, experienceLevel, datePost
   return { jobs, hasMore: rawCount >= PAGE_SIZE };
 }
 
+// Normalise all optional string params to '' so undefined and '' produce the
+// same cache key — fixes the mismatch between the prefetch script and the UI.
+function makeCacheKey(keywords, location, jobType, experienceLevel, datePosted, start) {
+  return `linkedin-apify:${JSON.stringify({
+    keywords:        keywords        || '',
+    location:        location        || '',
+    jobType:         jobType         || '',
+    experienceLevel: experienceLevel || '',
+    datePosted:      datePosted      || '',
+    start,
+  })}`;
+}
+
+function _startBackgroundRefresh(cacheKey, params) {
+  if (inFlight.has(cacheKey)) return;
+  const promise = _doFetch(params)
+    .then(async result => {
+      await setCache(cacheKey, result, FRESH_TTL_MS, STALE_TTL_MS);
+      console.log(`[LinkedIn-Apify] Background refresh complete: ${cacheKey.slice(0, 80)}`);
+      return result;
+    })
+    .catch(err => console.error('[LinkedIn-Apify] Background refresh failed:', err.message))
+    .finally(() => inFlight.delete(cacheKey));
+  inFlight.set(cacheKey, promise);
+}
+
 async function fetchLinkedInApify({ keywords, location, jobType, experienceLevel, datePosted, start = 0 }) {
   const apiToken = process.env.APIFY_API_TOKEN;
   if (!apiToken) throw new Error('APIFY_API_TOKEN not set');
 
-  const cacheKey = `linkedin-apify:${JSON.stringify({ keywords, location, jobType, experienceLevel, datePosted, start })}`;
+  const cacheKey   = makeCacheKey(keywords, location, jobType, experienceLevel, datePosted, start);
+  const fetchParams = { keywords, location, jobType, experienceLevel, datePosted, start, apiToken };
 
-  // 1. Completed-result cache (5 min TTL)
-  const cached = getCache(cacheKey);
-  if (cached) {
-    console.log(`[LinkedIn-Apify] Cache HIT — returning cached result`);
-    return cached;
+  // 1. Check Redis cache — fresh or stale
+  const cached = await getWithMeta(cacheKey);
+
+  if (cached && !cached.isStale) {
+    console.log(`[LinkedIn-Apify] Cache HIT (fresh) — returning immediately`);
+    return { ...cached.data, cacheStatus: 'hit' };
   }
 
-  // 2. In-flight deduplication — if the same request is already running,
-  //    await its Promise instead of starting a second Apify run
+  if (cached && cached.isStale) {
+    console.log(`[LinkedIn-Apify] Cache HIT (stale) — returning stale, refreshing in background`);
+    _startBackgroundRefresh(cacheKey, fetchParams);
+    return { ...cached.data, cacheStatus: 'stale' };
+  }
+
+  // 2. Cache miss — in-flight deduplication
   if (inFlight.has(cacheKey)) {
     console.log(`[LinkedIn-Apify] In-flight HIT — awaiting existing run`);
     return inFlight.get(cacheKey);
   }
 
-  const promise = _doFetch({ keywords, location, jobType, experienceLevel, datePosted, start, apiToken })
-    .then(result => {
-      setCache(cacheKey, result, CACHE_TTL_MS);
-      return result;
+  // 3. Full fetch
+  const promise = _doFetch(fetchParams)
+    .then(async result => {
+      await setCache(cacheKey, result, FRESH_TTL_MS, STALE_TTL_MS);
+      return { ...result, cacheStatus: 'miss' };
     })
-    .finally(() => {
-      inFlight.delete(cacheKey);
-    });
+    .finally(() => inFlight.delete(cacheKey));
 
   inFlight.set(cacheKey, promise);
   return promise;

@@ -4,31 +4,33 @@ const { dedupeJobs } = require('./dedupe');
 
 const ALL_SOURCES = ['linkedin'];
 
-// Use the local scraper in development (fast, no Apify cost).
-// Use the Apify actor in production (bypasses LinkedIn bot detection).
-const isDev = process.env.NODE_ENV !== 'production';
-const fetchLinkedInJobs = isDev ? fetchLinkedIn : fetchLinkedInApify;
-const PAGE_SIZE         = isDev ? SCRAPER_PAGE_SIZE : APIFY_PAGE_SIZE;
+// Use Apify when APIFY_API_TOKEN is set (works both locally and in prod).
+// Fall back to local cheerio scraper when no token is available.
+const hasApifyToken    = !!process.env.APIFY_API_TOKEN;
+const fetchLinkedInJobs = hasApifyToken ? fetchLinkedInApify : fetchLinkedIn;
+const PAGE_SIZE         = hasApifyToken ? APIFY_PAGE_SIZE   : SCRAPER_PAGE_SIZE;
 
-console.log(`[Jobs:Aggregator] LinkedIn source: ${isDev ? 'scraper (dev)' : 'Apify (prod)'}`);
+console.log(`[Jobs:Aggregator] LinkedIn source: ${hasApifyToken ? 'Apify' : 'scraper (no token)'}`);
 
 async function aggregateJobs(params) {
   const { page = 0, ...searchParams } = params;
   const linkedinStart = page * PAGE_SIZE;
 
-  let linkedinJobs = [];
+  let linkedinJobs  = [];
   let linkedinCount = 0;
+  let cacheStatus   = 'miss';
   try {
-    const r = await fetchLinkedInJobs({ ...searchParams, start: linkedinStart });
-    linkedinJobs = Array.isArray(r) ? r : (r.jobs || []);
+    const r    = await fetchLinkedInJobs({ ...searchParams, start: linkedinStart });
+    linkedinJobs  = Array.isArray(r) ? r : (r.jobs || []);
     linkedinCount = linkedinJobs.length;
-    console.log(`[Jobs:Aggregator] page=${page} start=${linkedinStart} → ${linkedinCount} LinkedIn jobs (${isDev ? 'scraper' : 'Apify'})`);
+    cacheStatus   = r.cacheStatus || 'miss';
+    console.log(`[Jobs:Aggregator] page=${page} → ${linkedinCount} jobs  cache=${cacheStatus}  source=${hasApifyToken ? 'Apify' : 'scraper'}`);
   } catch (e) {
     console.error('[Jobs:Aggregator] LinkedIn fetch failed:', e.message);
   }
 
   const jobs = dedupeJobs(linkedinJobs);
-  return { jobs, sourceStats: { linkedin: linkedinCount }, hasMore: linkedinCount > 0 };
+  return { jobs, sourceStats: { linkedin: linkedinCount }, hasMore: linkedinCount > 0, cacheStatus };
 }
 
 module.exports = { aggregateJobs, ALL_SOURCES };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Loader2, AlertCircle, Briefcase, MapPin, SlidersHorizontal, RefreshCw, ChevronDown, X } from 'lucide-react';
 import { CandidateProfile } from '../types';
 import { JobCard, Job } from '../components/JobCard';
@@ -43,15 +43,166 @@ function normaliseJob(raw: Record<string, unknown>): Job {
   };
 }
 
+const JOB_TITLES = [
+  // Individual contributor
+  'Software Engineer', 'Software Developer', 'Frontend Engineer', 'Backend Engineer',
+  'Full Stack Engineer', 'Mobile Engineer', 'DevOps Engineer', 'Site Reliability Engineer',
+  'SRE', 'QA Engineer', 'Test Engineer', 'Automation Test Engineer', 'SDET',
+  'Data Engineer', 'Machine Learning Engineer', 'AI Engineer', 'Security Engineer',
+  'Cloud Engineer', 'Platform Engineer', 'Infrastructure Engineer', 'Database Engineer',
+  'DBA', 'Embedded Software Engineer', 'Game Developer', 'UI Engineer',
+  'Build and Release Engineer',
+  // Senior / Specialist
+  'Senior Software Engineer', 'Staff Engineer', 'Principal Engineer',
+  'Software Architect', 'Solutions Architect', 'Technical Lead', 'Tech Lead',
+  // Engineering management
+  'Engineering Manager', 'Senior Engineering Manager', 'Director of Engineering',
+  'Senior Director of Engineering', 'VP of Engineering', 'CTO',
+  // Product / Adjacent
+  'Product Manager', 'Technical Program Manager', 'TPM', 'Engineering Program Manager',
+  'UX Designer', 'Product Designer', 'UX Engineer', 'Scrum Master', 'Agile Coach',
+  'Developer Advocate', 'Technical Writer',
+];
+
+function getSuggestions(query: string): string[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const startsWith = JOB_TITLES.filter(t => t.toLowerCase().startsWith(q));
+  const contains   = JOB_TITLES.filter(t => !t.toLowerCase().startsWith(q) && t.toLowerCase().includes(q));
+  return [...startsWith, ...contains].slice(0, 8);
+}
+
+interface TypeaheadProps {
+  value: string;
+  onChange: (v: string) => void;
+  onSubmit: () => void;
+}
+
+function JobTitleTypeahead({ value, onChange, onSubmit }: TypeaheadProps) {
+  const [open, setOpen]             = useState(false);
+  const [highlighted, setHighlighted] = useState(-1);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef     = useRef<HTMLInputElement>(null);
+
+  const suggestions = getSuggestions(value);
+  const isOpen = open && suggestions.length > 0;
+
+  useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, []);
+
+  const select = useCallback((title: string) => {
+    onChange(title);
+    setOpen(false);
+    setHighlighted(-1);
+  }, [onChange]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!isOpen) {
+      if (e.key === 'Enter') { onSubmit(); }
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlighted(i => Math.min(i + 1, suggestions.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlighted(i => Math.max(i - 1, -1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (highlighted >= 0) { select(suggestions[highlighted]); }
+      else { setOpen(false); onSubmit(); }
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+      setHighlighted(-1);
+    }
+  };
+
+  return (
+    <div ref={containerRef} className="flex-1 relative min-w-0">
+      <Briefcase size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        onChange={e => { onChange(e.target.value); setOpen(true); setHighlighted(-1); }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={handleKeyDown}
+        placeholder="Job title or keywords"
+        autoComplete="off"
+        className="w-full bg-gray-50 border border-gray-300 hover:border-gray-400 focus:border-[#4F46E5] rounded-xl pl-9 pr-8 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-colors"
+      />
+      {value && (
+        <button
+          type="button"
+          onClick={() => { onChange(''); setOpen(false); inputRef.current?.focus(); }}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <X size={13} />
+        </button>
+      )}
+      {isOpen && (
+        <ul className="absolute left-0 right-0 top-[calc(100%+4px)] bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden py-1">
+          {suggestions.map((title, i) => (
+            <li key={title}>
+              <button
+                type="button"
+                onMouseDown={e => { e.preventDefault(); select(title); }}
+                onMouseEnter={() => setHighlighted(i)}
+                className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2.5 ${
+                  i === highlighted
+                    ? 'bg-indigo-50 text-indigo-700'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <Search size={12} className={i === highlighted ? 'text-indigo-400' : 'text-gray-300'} />
+                <span>
+                  {(() => {
+                    const q   = value.trim().toLowerCase();
+                    const idx = title.toLowerCase().indexOf(q);
+                    if (idx === -1 || !q) return title;
+                    return (
+                      <>
+                        {title.slice(0, idx)}
+                        <strong className="font-semibold">{title.slice(idx, idx + q.length)}</strong>
+                        {title.slice(idx + q.length)}
+                      </>
+                    );
+                  })()}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 const selectCls = 'w-full bg-white border border-gray-300 focus:border-[#4F46E5] rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none cursor-pointer hover:border-gray-400 transition-colors';
 
 export function JobsPage({ profile }: JobsPageProps) {
   const [prefs, setPrefs] = useState<SearchPrefs>(() => {
+    const defaults: SearchPrefs = { keywords: profile.title || '', location: 'India', jobType: '', experienceLevel: '', datePosted: 'Past 24 hours' };
     try {
       const saved = localStorage.getItem(PREFS_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Partial<SearchPrefs>;
+        return {
+          ...defaults,
+          ...parsed,
+          location:   parsed.location   || defaults.location,
+          datePosted: parsed.datePosted || defaults.datePosted,
+        };
+      }
     } catch {}
-    return { keywords: profile.title || '', location: '', jobType: '', experienceLevel: '', datePosted: 'Past Week' };
+    return defaults;
   });
 
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -79,13 +230,17 @@ export function JobsPage({ profile }: JobsPageProps) {
     if (!append) { setJobs([]); setSearched(true); setPage(0); }
 
     try {
-      const res = await fetch('/api/jobs/search', {
+      const res  = await fetch('/api/jobs/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...prefs, page: pageNum }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+      const text = await res.text();
+      let data: Record<string, unknown> = {};
+      try { data = JSON.parse(text); } catch {
+        throw new Error(res.ok ? 'Server response was empty — the request may have timed out' : `Server error ${res.status}`);
+      }
+      if (!res.ok) throw new Error(String(data.error) || `Error ${res.status}`);
       const newJobs = (data.jobs || []).map(normaliseJob);
       setJobs(prev => {
         if (!append) return newJobs;
@@ -111,7 +266,7 @@ export function JobsPage({ profile }: JobsPageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const hasActiveFilters = prefs.jobType || prefs.experienceLevel || (prefs.datePosted && prefs.datePosted !== 'Past Week');
+  const hasActiveFilters = prefs.jobType || prefs.experienceLevel || (prefs.datePosted && prefs.datePosted !== 'Past 24 hours');
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-[#F3F2EF]">
@@ -120,18 +275,12 @@ export function JobsPage({ profile }: JobsPageProps) {
 
         {/* Primary row: keywords + location + search on desktop / keywords + search on mobile */}
         <div className="flex gap-2 items-center">
-          {/* Keywords */}
-          <div className="flex-1 relative min-w-0">
-            <Briefcase size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            <input
-              type="text"
-              value={prefs.keywords}
-              onChange={e => updatePref('keywords', e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && search()}
-              placeholder="Job title or keywords"
-              className="w-full bg-gray-50 border border-gray-300 hover:border-gray-400 focus:border-[#4F46E5] rounded-xl pl-9 pr-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-colors"
-            />
-          </div>
+          {/* Keywords — typeahead */}
+          <JobTitleTypeahead
+            value={prefs.keywords}
+            onChange={v => updatePref('keywords', v)}
+            onSubmit={search}
+          />
 
           {/* Location — desktop only inline */}
           <div className="hidden sm:flex relative flex-1 min-w-0">
@@ -221,7 +370,7 @@ export function JobsPage({ profile }: JobsPageProps) {
                 onClick={() => {
                   updatePref('jobType', '');
                   updatePref('experienceLevel', '');
-                  updatePref('datePosted', 'Past Week');
+                  updatePref('datePosted', 'Past 24 hours');
                 }}
                 className="sm:hidden flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 px-2 py-1.5 rounded-lg border border-gray-200 bg-white"
               >

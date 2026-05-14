@@ -1,4 +1,7 @@
 const cheerio = require('cheerio');
+const { getWithMeta, setCache } = require('../cache');
+
+const FRESH_TTL_MS = 24 * 60 * 60 * 1000; // 24 h
 
 const JOB_TYPE_MAP = { 'full-time': 'F', 'part-time': 'P', 'contract': 'C', 'temporary': 'T', 'internship': 'I' };
 const EXP_LEVEL_MAP = { 'internship': '1', 'entry-level': '2', 'associate': '3', 'mid-senior': '4', 'director': '5', 'executive': '6' };
@@ -9,6 +12,20 @@ const SOURCE = 'linkedin';
 const SOURCE_LABEL = 'LinkedIn';
 
 async function fetchLinkedIn({ keywords, location, jobType, experienceLevel, datePosted, start = 0 }) {
+  const cacheKey = `linkedin-scraper:${JSON.stringify({
+    keywords:        keywords        || '',
+    location:        location        || '',
+    jobType:         jobType         || '',
+    experienceLevel: experienceLevel || '',
+    datePosted:      datePosted      || '',
+    start,
+  })}`;
+  const cached = await getWithMeta(cacheKey);
+  if (cached) {
+    console.log(`[Jobs:LinkedIn] Cache ${cached.isStale ? 'STALE' : 'HIT'} — returning cached result`);
+    return { ...cached.data, cacheStatus: cached.isStale ? 'stale' : 'hit' };
+  }
+
   const params = new URLSearchParams({ keywords, start: String(start), count: String(PAGE_SIZE), sortBy: 'DD' });
   if (location) params.set('location', location);
   if (jobType && JOB_TYPE_MAP[jobType]) params.set('f_JT', JOB_TYPE_MAP[jobType]);
@@ -71,7 +88,9 @@ async function fetchLinkedIn({ keywords, location, jobType, experienceLevel, dat
     return b.postedAtDate.localeCompare(a.postedAtDate);
   });
 
-  return { jobs, hasMore: jobs.length >= PAGE_SIZE };
+  const result = { jobs, hasMore: jobs.length >= PAGE_SIZE };
+  await setCache(cacheKey, result, FRESH_TTL_MS);
+  return { ...result, cacheStatus: 'miss' };
 }
 
 module.exports = { fetchLinkedIn, PAGE_SIZE };
