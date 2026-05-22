@@ -54,15 +54,15 @@ function AppHeader({ profile, onChangeProfile, onViewProfile }: {
 
   return (
     <header className="flex items-center shrink-0 h-14 px-4 sm:px-6 gap-4"
-      style={{ background: '#0d1117', borderBottom: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 1px 20px rgba(0,0,0,0.4)' }}>
+      style={{ background: 'white', borderBottom: '1px solid #E5E7EB', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
       {/* Logo */}
       <div className="flex items-center gap-2.5">
         <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)', boxShadow: '0 0 14px rgba(79,70,229,0.5)' }}>
+          style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)', boxShadow: '0 0 12px rgba(79,70,229,0.3)' }}>
           <Zap size={16} className="text-white" />
         </div>
-        <span className="text-white font-bold text-base tracking-tight">
-          JobCracker<span className="text-indigo-400 font-normal text-sm">.in</span>
+        <span className="text-gray-900 font-bold text-base tracking-tight">
+          JobCracker<span className="text-indigo-600 font-normal text-sm">.in</span>
         </span>
       </div>
 
@@ -72,37 +72,37 @@ function AppHeader({ profile, onChangeProfile, onViewProfile }: {
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setMenuOpen(v => !v)}
-          className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-white/5 transition-colors"
+          className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-gray-50 transition-colors"
         >
           {profile.photoUrl ? (
             <img src={profile.photoUrl} alt={profile.name}
-              className="w-8 h-8 rounded-full object-cover ring-2 ring-slate-700" />
+              className="w-8 h-8 rounded-full object-cover ring-2 ring-gray-200" />
           ) : (
-            <div className="w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-slate-700 shrink-0"
+            <div className="w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-gray-200 shrink-0"
               style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)' }}>
               <span className="text-white text-xs font-bold">{initials}</span>
             </div>
           )}
-          <ChevronDown size={13} className={`text-slate-500 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+          <ChevronDown size={13} className={`text-gray-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
         </button>
 
         {menuOpen && (
           <div className="absolute right-0 top-[calc(100%+6px)] w-44 rounded-2xl border overflow-hidden z-50"
-            style={{ background: '#161b27', borderColor: 'rgba(255,255,255,0.1)', boxShadow: '0 16px 40px rgba(0,0,0,0.6)' }}>
-            <div className="px-4 py-2.5 border-b" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
-              <p className="text-xs font-semibold text-white truncate">{profile.name}</p>
-              {profile.email && <p className="text-[11px] text-slate-500 truncate">{profile.email}</p>}
+            style={{ background: 'white', borderColor: '#E5E7EB', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
+            <div className="px-4 py-2.5 border-b" style={{ borderColor: '#F3F4F6' }}>
+              <p className="text-xs font-semibold text-gray-900 truncate">{profile.name}</p>
+              {profile.email && <p className="text-[11px] text-gray-500 truncate">{profile.email}</p>}
             </div>
             <button
               onClick={() => { onViewProfile(); setMenuOpen(false); }}
-              className="flex items-center gap-2.5 w-full px-4 py-3 text-sm text-slate-400 hover:bg-white/5 hover:text-white transition-colors text-left"
+              className="flex items-center gap-2.5 w-full px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors text-left"
             >
               <UserCircle2 size={14} /> Profile
             </button>
             <button
               onClick={() => { onChangeProfile(); setMenuOpen(false); }}
-              className="flex items-center gap-2.5 w-full px-4 py-3 text-sm text-slate-400 hover:bg-white/5 hover:text-red-400 transition-colors text-left border-t"
-              style={{ borderColor: 'rgba(255,255,255,0.07)' }}
+              className="flex items-center gap-2.5 w-full px-4 py-3 text-sm text-gray-600 hover:bg-gray-50 hover:text-red-500 transition-colors text-left border-t"
+              style={{ borderColor: '#F3F4F6' }}
             >
               <LogOut size={14} /> Sign out
             </button>
@@ -284,9 +284,9 @@ function BottomNav({ activeTab, onTabChange }: {
     <nav
       className="md:hidden shrink-0 flex items-stretch"
       style={{
-        background: '#0d1117',
-        borderTop: '1px solid rgba(255,255,255,0.08)',
-        boxShadow: '0 -4px 24px rgba(0,0,0,0.45)',
+        background: 'white',
+        borderTop: '1px solid #E5E7EB',
+        boxShadow: '0 -2px 8px rgba(0,0,0,0.06)',
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
@@ -299,26 +299,26 @@ function BottomNav({ activeTab, onTabChange }: {
             className="flex-1 flex flex-col items-center justify-center gap-0.5 pt-3 pb-2.5 min-h-[56px] transition-all relative"
           >
             {soon && (
-              <span className="absolute top-1.5 right-1 text-[8px] font-bold px-1 py-0.5 rounded-full bg-amber-500/20 text-amber-400 leading-none">
+              <span className="absolute top-1.5 right-1 text-[8px] font-bold px-1 py-0.5 rounded-full bg-amber-50 text-amber-500 leading-none">
                 Soon
               </span>
             )}
             <div className={`relative flex items-center justify-center w-10 h-7 rounded-xl transition-all duration-200 ${
-              active ? 'bg-indigo-500/20' : ''
+              active ? 'bg-indigo-50' : ''
             }`}>
               {active && (
                 <span
                   className="absolute inset-0 rounded-xl"
-                  style={{ boxShadow: '0 0 14px rgba(99,102,241,0.55)', opacity: 0.7 }}
+                  style={{ boxShadow: '0 0 10px rgba(79,70,229,0.15)', opacity: 0.8 }}
                 />
               )}
               <Icon
                 size={19}
-                className={`relative transition-colors duration-200 ${active ? 'text-indigo-400' : soon ? 'text-slate-600' : 'text-slate-500'}`}
+                className={`relative transition-colors duration-200 ${active ? 'text-indigo-600' : soon ? 'text-gray-300' : 'text-gray-400'}`}
               />
             </div>
             <span className={`text-[10px] font-semibold tracking-wide leading-none transition-colors duration-200 ${
-              active ? 'text-indigo-400' : 'text-slate-600'
+              active ? 'text-indigo-600' : 'text-gray-500'
             }`}>
               {label}
             </span>
@@ -472,27 +472,27 @@ function BrowseLearnShell({ onBack }: { onBack: () => void }) {
       <header
         className="flex items-center shrink-0 h-14 px-4 sm:px-6 gap-3"
         style={{
-          background: '#0d1117',
-          borderBottom: '1px solid rgba(255,255,255,0.07)',
-          boxShadow: '0 1px 20px rgba(0,0,0,0.4)',
+          background: 'white',
+          borderBottom: '1px solid #E5E7EB',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
         }}
       >
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white px-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
+          className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900 px-2 py-1 rounded-lg hover:bg-gray-50 transition-colors"
         >
           <ArrowLeft size={13} /> Home
         </button>
 
         <div className="flex items-center gap-2.5 ml-1">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)', boxShadow: '0 0 14px rgba(79,70,229,0.5)' }}>
+            style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)', boxShadow: '0 0 12px rgba(79,70,229,0.3)' }}>
             <Zap size={16} className="text-white" />
           </div>
-          <span className="text-white font-bold text-base tracking-tight">
-            JobCracker<span className="text-indigo-400 font-normal text-sm">.in</span>
+          <span className="text-gray-900 font-bold text-base tracking-tight">
+            JobCracker<span className="text-indigo-600 font-normal text-sm">.in</span>
           </span>
-          <span className="hidden sm:inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 ml-1">
+          <span className="hidden sm:inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 ml-1">
             Learn · Free
           </span>
         </div>
@@ -501,7 +501,7 @@ function BrowseLearnShell({ onBack }: { onBack: () => void }) {
 
         <a
           href="/auth/linkedin"
-          className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:border-white/20 transition-colors"
+          className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
         >
           Sign in
         </a>

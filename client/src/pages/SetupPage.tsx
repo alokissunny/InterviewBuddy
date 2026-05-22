@@ -2,21 +2,40 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Loader2, Upload, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 import { CandidateProfile } from '../types';
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
+// ─── Design tokens ─────────────────────────────────────── Light page theme ──
 const T = {
-  bg:        '#0b0d0c',
-  bg2:       '#101312',
-  bg3:       '#161a18',
-  line:      '#1d211f',
-  line2:     '#2a2f2c',
-  ink:       '#e8e4d8',
-  ink2:      '#c8c4b8',
-  inkDim:    '#888a82',
-  inkFaint:  '#4a4d46',
-  accent:    '#b8e986',
-  accentInk: '#0b0d0c',
-  accentDim: 'rgba(184,233,134,0.08)',
-  accentLine:'rgba(184,233,134,0.22)',
+  bg:        '#FFFFFF',
+  bg2:       '#F8FAFC',
+  bg3:       '#F1F5F9',
+  line:      '#E2E8F0',
+  line2:     '#CBD5E1',
+  ink:       '#0F172A',
+  ink2:      '#334155',
+  inkDim:    '#64748B',
+  inkFaint:  '#94A3B8',
+  accent:    '#4F46E5',
+  accentInk: '#FFFFFF',
+  accentDim: 'rgba(79,70,229,0.07)',
+  accentLine:'rgba(79,70,229,0.22)',
+  mono:      '"JetBrains Mono", ui-monospace, monospace',
+  sans:      '"Manrope", system-ui, sans-serif',
+  serif:     '"Newsreader", Georgia, serif',
+};
+
+// ─── Dark-mock tokens ──────────────────── used only in UI demo panels ───────
+const DM = {
+  bg:        '#0D1117',
+  bg2:       '#161B27',
+  bg3:       '#1E2736',
+  line:      '#21283A',
+  line2:     '#2D3748',
+  ink:       '#E8E4D8',
+  ink2:      '#B0BBCF',
+  inkDim:    '#6B7A99',
+  inkFaint:  '#3D4A60',
+  accent:    '#818CF8',
+  accentDim: 'rgba(129,140,248,0.08)',
+  accentLine:'rgba(129,140,248,0.22)',
   mono:      '"JetBrains Mono", ui-monospace, monospace',
   sans:      '"Manrope", system-ui, sans-serif',
   serif:     '"Newsreader", Georgia, serif',
@@ -83,8 +102,8 @@ function Ambient() {
       <div style={{
         position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
         background: `
-          radial-gradient(ellipse 70% 50% at 50% 0%, rgba(184,233,134,0.04), transparent 70%),
-          radial-gradient(ellipse 60% 40% at 100% 100%, rgba(184,233,134,0.02), transparent 60%)
+          radial-gradient(ellipse 70% 50% at 50% 0%, rgba(79,70,229,0.04), transparent 70%),
+          radial-gradient(ellipse 60% 40% at 100% 100%, rgba(99,102,241,0.02), transparent 60%)
         `,
       }} />
       <div style={{
@@ -175,7 +194,7 @@ function Nav({ onBrowseLearn }: { onBrowseLearn?: () => void }) {
 
 // ─── Editor mock (hero right) ─────────────────────────────────────────────────
 function EditorMock() {
-  const codeColors = { com: T.inkFaint, kw: '#c597e8', fn: T.accent, str: '#e8c986', var: T.ink, num: '#86c7e8', ind: T.inkFaint };
+  const codeColors = { com: DM.inkFaint, kw: '#c597e8', fn: DM.accent, str: '#e8c986', var: DM.ink, num: '#86c7e8', ind: DM.inkFaint };
   const lines = [
     <span style={{ color: codeColors.com }}>{'// listening · transcribing · matching context'}</span>,
     <><span style={{ color: codeColors.kw }}>const</span>{' '}<span style={{ color: codeColors.var }}>interview</span>{' = '}<span style={{ color: codeColors.fn }}>jobcracker</span>{'.'}<span style={{ color: codeColors.fn }}>join</span>{'('}<span style={{ color: codeColors.str }}>"zoom-call.001"</span>{')'}</>,
@@ -190,26 +209,26 @@ function EditorMock() {
 
   return (
     <div className="jc-editor-mock" style={{
-      background: T.bg2, border: `1px solid ${T.line}`, borderRadius: 10,
-      fontFamily: T.mono, fontSize: 13, overflow: 'hidden',
-      boxShadow: '0 24px 64px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.02) inset',
+      background: DM.bg2, border: `1px solid ${DM.line}`, borderRadius: 10,
+      fontFamily: DM.mono, fontSize: 13, overflow: 'hidden',
+      boxShadow: '0 24px 64px rgba(0,0,0,.25), 0 1px 0 rgba(255,255,255,.02) inset',
     }}>
       {/* Title bar */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
-        borderBottom: `1px solid ${T.line}`, fontSize: 11.5, color: T.inkDim,
+        borderBottom: `1px solid ${DM.line}`, fontSize: 11.5, color: DM.inkDim,
       }}>
         <div style={{ display: 'flex', gap: 6 }}>
-          {['#666','#666','#666'].map((c, i) => (
-            <span key={i} style={{ width: 9, height: 9, borderRadius: '50%', background: T.line2, display: 'inline-block' }} />
+          {['','',''].map((_, i) => (
+            <span key={i} style={{ width: 9, height: 9, borderRadius: '50%', background: DM.line2, display: 'inline-block' }} />
           ))}
         </div>
         <span style={{ flex: 1 }}>
-          <span style={{ color: T.inkFaint }}>{'~/interview/'}</span>
-          <span style={{ color: T.ink2 }}>anthropic.staff-pm.live</span>
+          <span style={{ color: DM.inkFaint }}>{'~/interview/'}</span>
+          <span style={{ color: DM.ink2 }}>anthropic.staff-pm.live</span>
         </span>
-        <span style={{ color: T.accent, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: T.accent, display: 'inline-block', animation: 'jc-pulse 1.6s infinite' }} />
+        <span style={{ color: DM.accent, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: DM.accent, display: 'inline-block', animation: 'jc-pulse 1.6s infinite' }} />
           REC 03:42
         </span>
       </div>
@@ -217,12 +236,12 @@ function EditorMock() {
       {/* Code body */}
       <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr' }}>
         {/* Gutter */}
-        <div style={{ padding: '14px 0', textAlign: 'right', color: T.inkFaint, fontSize: 11.5, lineHeight: 1.85, borderRight: `1px solid ${T.line}`, userSelect: 'none' }}>
+        <div style={{ padding: '14px 0', textAlign: 'right', color: DM.inkFaint, fontSize: 11.5, lineHeight: 1.85, borderRight: `1px solid ${DM.line}`, userSelect: 'none' }}>
           {lines.map((_, i) => (
             <span key={i} style={{
               display: 'block', padding: '0 10px 0 0',
-              color: i + 1 === curLine ? T.accent : T.inkFaint,
-              background: i + 1 === curLine ? T.accentDim : 'transparent',
+              color: i + 1 === curLine ? DM.accent : DM.inkFaint,
+              background: i + 1 === curLine ? DM.accentDim : 'transparent',
             }}>{i + 1}</span>
           ))}
         </div>
@@ -236,37 +255,37 @@ function EditorMock() {
 
       {/* Whisper card */}
       <div style={{
-        borderTop: `1px dashed ${T.line2}`, padding: '14px 16px',
-        background: 'linear-gradient(180deg, transparent, rgba(184,233,134,0.025))',
+        borderTop: `1px dashed ${DM.line2}`, padding: '14px 16px',
+        background: `linear-gradient(180deg, transparent, ${DM.accentDim})`,
       }}>
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          fontFamily: T.mono, fontSize: 10.5, color: T.inkDim,
+          fontFamily: DM.mono, fontSize: 10.5, color: DM.inkDim,
           letterSpacing: '0.05em', textTransform: 'uppercase' as const, marginBottom: 10,
         }}>
-          <span style={{ color: T.accent, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ color: DM.accent, display: 'flex', alignItems: 'center', gap: 4 }}>
             ▸ SUGGESTED · STAR · 0.42s
           </span>
           <span>conf 96%</span>
         </div>
-        <div style={{ fontSize: 12.5, color: T.inkDim, fontStyle: 'italic', lineHeight: 1.5, marginBottom: 10, fontFamily: T.serif }}>
+        <div style={{ fontSize: 12.5, color: DM.inkDim, fontStyle: 'italic', lineHeight: 1.5, marginBottom: 10, fontFamily: DM.serif }}>
           "Tell me about a stakeholder conflict you handled."
         </div>
-        <div style={{ fontSize: 13, lineHeight: 1.55, color: T.ink }}>
-          Lead with your <span style={{ color: T.accent }}>Q3 legacy-API sunset</span> at Stripe — Eng Lead pushed back, you ran a data review, found <span style={{ color: T.accent }}>3.2% revenue at risk</span>, proposed a phased plan. Result: shipped on time, <span style={{ color: T.accent }}>zero churn</span>.
+        <div style={{ fontSize: 13, lineHeight: 1.55, color: DM.ink }}>
+          Lead with your <span style={{ color: DM.accent }}>Q3 legacy-API sunset</span> at Stripe — Eng Lead pushed back, you ran a data review, found <span style={{ color: DM.accent }}>3.2% revenue at risk</span>, proposed a phased plan. Result: shipped on time, <span style={{ color: DM.accent }}>zero churn</span>.
         </div>
       </div>
 
       {/* Footer */}
       <div style={{
-        borderTop: `1px solid ${T.line}`, padding: '8px 14px',
+        borderTop: `1px solid ${DM.line}`, padding: '8px 14px',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        fontSize: 11, color: T.inkDim,
+        fontSize: 11, color: DM.inkDim,
       }}>
         <div style={{ display: 'flex', gap: 12 }}>
           {[['⌘K','rephrase'],['⌘L','shorter'],['⌘↵','next']].map(([k, l]) => (
             <span key={k}>
-              <kbd style={{ fontFamily: T.mono, fontSize: 10.5, border: `1px solid ${T.line2}`, padding: '1px 5px', borderRadius: 3, color: T.ink2, marginRight: 2 }}>{k}</kbd>
+              <kbd style={{ fontFamily: DM.mono, fontSize: 10.5, border: `1px solid ${DM.line2}`, padding: '1px 5px', borderRadius: 3, color: DM.ink2, marginRight: 2 }}>{k}</kbd>
               {l}
             </span>
           ))}
@@ -306,22 +325,22 @@ function VisCopilot() {
   const delays = Array.from({ length: 28 }, (_, i) => i * 0.08);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: T.inkDim, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>
-        <span style={{ color: T.accent, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 5, height: 5, borderRadius: '50%', background: T.accent, display: 'inline-block', animation: 'jc-pulse 1.5s infinite' }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: DM.inkDim, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>
+        <span style={{ color: DM.accent, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 5, height: 5, borderRadius: '50%', background: DM.accent, display: 'inline-block', animation: 'jc-pulse 1.5s infinite' }} />
           LIVE · 03:42
         </span>
         <span>ZOOM</span>
       </div>
-      <div style={{ color: T.inkDim, fontStyle: 'italic', fontFamily: T.serif, fontSize: 13.5, lineHeight: 1.4 }}>
+      <div style={{ color: DM.inkDim, fontStyle: 'italic', fontFamily: DM.serif, fontSize: 13.5, lineHeight: 1.4 }}>
         "Why do you want to work at Anthropic specifically?"
       </div>
-      <div style={{ color: T.ink, fontSize: 12.5, lineHeight: 1.55, paddingTop: 8, borderTop: `1px dashed ${T.line2}` }}>
-        {'→ Lead with your '}<span style={{ color: T.accent }}>RLHF side project</span>{'. Mention the '}<span style={{ color: T.accent }}>Claude 4 launch</span>{' as catalyst. Tie to your '}<span style={{ color: T.accent }}>alignment essay</span>.
+      <div style={{ color: DM.ink, fontSize: 12.5, lineHeight: 1.55, paddingTop: 8, borderTop: `1px dashed ${DM.line2}` }}>
+        {'→ Lead with your '}<span style={{ color: DM.accent }}>RLHF side project</span>{'. Mention the '}<span style={{ color: DM.accent }}>Claude 4 launch</span>{' as catalyst. Tie to your '}<span style={{ color: DM.accent }}>alignment essay</span>.
       </div>
       <div style={{ display: 'flex', gap: 2, alignItems: 'center', height: 14 }}>
         {delays.map((d, i) => (
-          <i key={i} style={{ display: 'block', width: 2, background: T.accent, borderRadius: 1, animation: `jc-wave 1.4s ease-in-out ${d}s infinite`, opacity: .7 }} />
+          <i key={i} style={{ display: 'block', width: 2, background: DM.accent, borderRadius: 1, animation: `jc-wave 1.4s ease-in-out ${d}s infinite`, opacity: .7 }} />
         ))}
       </div>
     </div>
@@ -331,20 +350,20 @@ function VisCopilot() {
 function VisMock() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10.5, color: T.inkDim, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10.5, color: DM.inkDim, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>
         <span>ROUND 2 · BEHAVIORAL</span>
-        <span style={{ color: T.accent }}>SCORED</span>
+        <span style={{ color: DM.accent }}>SCORED</span>
       </div>
-      <div style={{ fontFamily: T.serif, fontStyle: 'italic', fontSize: 14, color: T.ink, lineHeight: 1.4 }}>
+      <div style={{ fontFamily: DM.serif, fontStyle: 'italic', fontSize: 14, color: DM.ink, lineHeight: 1.4 }}>
         "Walk me through a time you said no to a senior leader."
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, paddingTop: 12, borderTop: `1px dashed ${T.line2}` }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, paddingTop: 12, borderTop: `1px dashed ${DM.line2}` }}>
         {[['8.4','Clarity'],['9.1','STAR'],['7.2','Signal']].map(([v, l]) => (
           <div key={l}>
-            <div style={{ fontFamily: T.sans, fontSize: 22, fontWeight: 500, letterSpacing: '-0.02em', color: T.ink }}>
-              {v}<span style={{ fontSize: 11, color: T.inkFaint, marginLeft: 2 }}>/10</span>
+            <div style={{ fontFamily: DM.sans, fontSize: 22, fontWeight: 500, letterSpacing: '-0.02em', color: DM.ink }}>
+              {v}<span style={{ fontSize: 11, color: DM.inkFaint, marginLeft: 2 }}>/10</span>
             </div>
-            <div style={{ fontSize: 10, color: T.inkDim, letterSpacing: '0.05em', textTransform: 'uppercase' as const, marginTop: 2 }}>{l}</div>
+            <div style={{ fontSize: 10, color: DM.inkDim, letterSpacing: '0.05em', textTransform: 'uppercase' as const, marginTop: 2 }}>{l}</div>
           </div>
         ))}
       </div>
@@ -362,18 +381,18 @@ function VisJobs() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {jobs.map(j => (
-        <div key={j.role} style={{ display: 'grid', gridTemplateColumns: '22px 1fr auto', gap: 10, alignItems: 'center', padding: '8px 0', borderBottom: `1px dashed ${T.line}`, fontSize: 11.5 }}>
+        <div key={j.role} style={{ display: 'grid', gridTemplateColumns: '22px 1fr auto', gap: 10, alignItems: 'center', padding: '8px 0', borderBottom: `1px dashed ${DM.line}`, fontSize: 11.5 }}>
           <div style={{
-            width: 22, height: 22, borderRadius: 4, background: T.bg3,
-            border: `1px solid ${j.top ? T.accentLine : T.line2}`,
+            width: 22, height: 22, borderRadius: 4, background: DM.bg3,
+            border: `1px solid ${j.top ? DM.accentLine : DM.line2}`,
             display: 'grid', placeItems: 'center', fontSize: 10,
-            color: j.top ? T.accent : T.ink2, fontWeight: 600,
+            color: j.top ? DM.accent : DM.ink2, fontWeight: 600,
           }}>{j.letter}</div>
           <div>
-            <div style={{ color: T.ink, fontFamily: T.sans, fontSize: 12 }}>{j.role}</div>
-            <div style={{ color: T.inkDim, fontSize: 10.5, fontFamily: T.mono, marginTop: 1 }}>{j.meta}</div>
+            <div style={{ color: DM.ink, fontFamily: DM.sans, fontSize: 12 }}>{j.role}</div>
+            <div style={{ color: DM.inkDim, fontSize: 10.5, fontFamily: DM.mono, marginTop: 1 }}>{j.meta}</div>
           </div>
-          <div style={{ color: T.accent, fontWeight: 600, fontSize: 11 }}>{j.match}</div>
+          <div style={{ color: DM.accent, fontWeight: 600, fontSize: 11 }}>{j.match}</div>
         </div>
       ))}
     </div>
@@ -384,26 +403,26 @@ function VisCV() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontFamily: T.sans, fontSize: 14, color: T.ink, fontWeight: 500 }}>Alex Chen</div>
-        <div style={{ fontSize: 10, color: T.accent, border: `1px solid ${T.accentLine}`, padding: '2px 6px', borderRadius: 3, letterSpacing: '0.06em' }}>v3 · 95% ATS</div>
+        <div style={{ fontFamily: DM.sans, fontSize: 14, color: DM.ink, fontWeight: 500 }}>Alex Chen</div>
+        <div style={{ fontSize: 10, color: DM.accent, border: `1px solid ${DM.accentLine}`, padding: '2px 6px', borderRadius: 3, letterSpacing: '0.06em' }}>v3 · 95% ATS</div>
       </div>
-      <div style={{ fontSize: 10.5, color: T.inkDim }}>Tailored for: Anthropic · Staff PM, Platform</div>
+      <div style={{ fontSize: 10.5, color: DM.inkDim }}>Tailored for: Anthropic · Staff PM, Platform</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, margin: '8px 0' }}>
         {[null, 'short', 'hl', null, 'short', 'hl2', null].map((cls, i) => (
           <div key={i} style={{
             height: 3, borderRadius: 2,
-            background: cls === 'hl' ? T.accent : cls === 'hl2' ? `${T.accent}80` : T.line2,
+            background: cls === 'hl' ? DM.accent : cls === 'hl2' ? `${DM.accent}80` : DM.line2,
             width: cls === 'short' ? '60%' : cls === 'hl' ? '45%' : cls === 'hl2' ? '55%' : '100%',
           }} />
         ))}
       </div>
-      <div style={{ display: 'flex', gap: 6, paddingTop: 8, borderTop: `1px dashed ${T.line2}` }}>
+      <div style={{ display: 'flex', gap: 6, paddingTop: 8, borderTop: `1px dashed ${DM.line2}` }}>
         {['Anthropic', 'Linear', 'Figma', '+12'].map((c, i) => (
           <span key={c} style={{
-            padding: '3px 8px', border: `1px solid ${i === 0 ? T.accentLine : T.line2}`,
+            padding: '3px 8px', border: `1px solid ${i === 0 ? DM.accentLine : DM.line2}`,
             borderRadius: 999, fontSize: 10,
-            color: i === 0 ? T.accent : T.inkDim,
-            background: i === 0 ? T.accentDim : 'transparent',
+            color: i === 0 ? DM.accent : DM.inkDim,
+            background: i === 0 ? DM.accentDim : 'transparent',
           }}>{c}</span>
         ))}
       </div>
@@ -419,18 +438,18 @@ function VisLinkedIn() {
     { name: 'Jordan Lee', sub: 'CPO · Notion',            stat: '⧖ queued', cls: 'queue' },
   ];
   const statStyle = (cls: string): React.CSSProperties => {
-    if (cls === 'sent')  return { color: T.accent, border: `1px solid ${T.accentLine}` };
-    if (cls === 'reply') return { color: T.ink, border: `1px solid ${T.inkDim}`, background: T.bg3 };
-    return { color: T.inkDim, border: `1px solid ${T.line2}` };
+    if (cls === 'sent')  return { color: DM.accent, border: `1px solid ${DM.accentLine}` };
+    if (cls === 'reply') return { color: DM.ink, border: `1px solid ${DM.inkDim}`, background: DM.bg3 };
+    return { color: DM.inkDim, border: `1px solid ${DM.line2}` };
   };
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       {rows.map(r => (
-        <div key={r.name} style={{ display: 'grid', gridTemplateColumns: '24px 1fr auto', gap: 10, alignItems: 'center', padding: '8px 0', borderBottom: `1px dashed ${T.line}`, fontSize: 11.5 }}>
-          <div style={{ width: 24, height: 24, borderRadius: '50%', background: T.bg3, border: `1px solid ${T.line2}` }} />
+        <div key={r.name} style={{ display: 'grid', gridTemplateColumns: '24px 1fr auto', gap: 10, alignItems: 'center', padding: '8px 0', borderBottom: `1px dashed ${DM.line}`, fontSize: 11.5 }}>
+          <div style={{ width: 24, height: 24, borderRadius: '50%', background: DM.bg3, border: `1px solid ${DM.line2}` }} />
           <div>
-            <div style={{ color: T.ink, fontFamily: T.sans, fontSize: 12 }}>{r.name}</div>
-            <div style={{ color: T.inkDim, fontSize: 10, fontFamily: T.mono }}>{r.sub}</div>
+            <div style={{ color: DM.ink, fontFamily: DM.sans, fontSize: 12 }}>{r.name}</div>
+            <div style={{ color: DM.inkDim, fontSize: 10, fontFamily: DM.mono }}>{r.sub}</div>
           </div>
           <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 3, letterSpacing: '0.04em', ...statStyle(r.cls) }}>{r.stat}</span>
         </div>
@@ -531,8 +550,8 @@ function FeaturesSection() {
 
               {/* Visual */}
               <div style={{
-                background: T.bg2, border: `1px solid ${T.line}`, borderRadius: 8,
-                padding: 18, fontFamily: T.mono, fontSize: 12,
+                background: DM.bg2, border: `1px solid ${DM.line}`, borderRadius: 8,
+                padding: 18, fontFamily: DM.mono, fontSize: 12,
                 minHeight: 200, position: 'relative', overflow: 'hidden',
               }}>
                 {f.vis}
@@ -572,7 +591,7 @@ function HowItWorks() {
           borderRadius: 10, overflow: 'hidden',
         }}>
           {steps.map(s => (
-            <div key={s.n} className="jc-step" style={{ background: T.bg2, padding: '36px 32px', display: 'flex', flexDirection: 'column', gap: 14, minHeight: 240 }}>
+            <div key={s.n} className="jc-step" style={{ background: '#FFFFFF', padding: '36px 32px', display: 'flex', flexDirection: 'column', gap: 14, minHeight: 240 }}>
               <div style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, letterSpacing: '0.05em' }}>{s.n}</div>
               <div style={{ fontSize: 22, lineHeight: 1.15, letterSpacing: '-0.02em', fontWeight: 500, fontFamily: T.sans, color: T.ink }}>{s.t}</div>
               <div style={{ fontSize: 14, lineHeight: 1.55, color: T.inkDim, marginTop: 'auto' }}>{s.d}</div>
@@ -678,9 +697,9 @@ export function LoginPage({ linkedinError, onClearLinkedinError, onBrowseLearn }
             {/* Eyebrow */}
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, fontFamily: T.mono, fontSize: 11.5, color: T.inkDim, marginBottom: 28, letterSpacing: '0.02em' }}>
               <span style={{ color: T.accent }}>●</span>
-              INTERVIEW COPILOT · v2.0
+              AI LEARNING PLATFORM · v2.0
               <span style={{ color: T.inkFaint, margin: '0 2px' }}>/</span>
-              now with real-time STAR
+              system design · behavioural · prep
             </div>
 
             {linkedinError && (
@@ -697,14 +716,13 @@ export function LoginPage({ linkedinError, onClearLinkedinError, onBrowseLearn }
               lineHeight: 1.0, letterSpacing: '-0.038em', fontWeight: 500,
               marginBottom: 28, maxWidth: '14ch', color: T.ink,
             }}>
-              Your <span style={{ color: T.accent, fontFamily: T.serif, fontStyle: 'italic', fontWeight: 400 }}>personalised</span><br />
-              Interview Copilot<br />
-              is here.
+              Learn. Practice.<br />
+              <span style={{ color: T.accent, fontFamily: T.serif, fontStyle: 'italic', fontWeight: 400 }}>Land the offer.</span>
             </h1>
 
             <p style={{ fontSize: 18, lineHeight: 1.55, color: T.inkDim, maxWidth: '52ch', marginBottom: 36, fontWeight: 400 }}>
-              JobCracker listens to your interview in real time and surfaces <strong style={{ color: T.ink, fontWeight: 500 }}>structured, context-aware answers</strong> — drawn from your CV, the job description, and the company. Plus mock practice, smart job search, custom CVs, and LinkedIn outreach.{' '}
-              <em style={{ fontFamily: T.serif, fontStyle: 'italic' }}>All in one workspace.</em>
+              A structured learning platform for senior engineering interviews. Deep-dive system design, AI mock practice with real-time scoring, and a live interview copilot — all <strong style={{ color: T.ink, fontWeight: 500 }}>personalised to your CV and target role.</strong>{' '}
+              <em style={{ fontFamily: T.serif, fontStyle: 'italic' }}>From first study to signed offer.</em>
             </p>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: 40 }}>
@@ -854,7 +872,7 @@ export function CVOnboardingPage({ profile, onComplete }: CVOnboardingPageProps)
         </div>
 
         {/* Card */}
-        <div style={{ width: '100%', borderRadius: 14, padding: 32, border: `1px solid ${T.line2}`, background: T.bg2, boxShadow: '0 32px 80px rgba(0,0,0,.4)' }}>
+        <div style={{ width: '100%', borderRadius: 14, padding: 32, border: `1px solid ${T.line2}`, background: T.bg2, boxShadow: '0 8px 32px rgba(0,0,0,0.1)' }}>
           <div style={{ textAlign: 'center', marginBottom: 28 }}>
             <h2 style={{ fontSize: 24, fontWeight: 600, color: T.ink, marginBottom: 8, fontFamily: T.sans }}>One last step — upload your CV</h2>
             <p style={{ color: T.inkDim, fontSize: 14, lineHeight: 1.6, maxWidth: 400, margin: '0 auto' }}>

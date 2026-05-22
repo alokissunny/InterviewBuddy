@@ -138,41 +138,68 @@ export function InterviewPrepPage({ onPractice }: Props) {
         {/* ── Hero header ───────────────────────────────────────────── */}
         <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
           <div className="px-5 sm:px-6 py-5 sm:py-6"
-            style={{ background: 'linear-gradient(135deg,#4F46E5 0%,#7C3AED 60%,#9333EA 100%)' }}>
-            <div className="flex items-start gap-4">
-              <div className="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
-                <BookOpen size={22} className="text-white" />
+            style={{ background: 'linear-gradient(135deg,#FFFFFF 0%,#EEF2FF 55%,#F5F3FF 100%)' }}>
+
+            {/* Icon + title + AI badge */}
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
+                style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)' }}>
+                <BookOpen size={20} className="text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <h1 className="text-xl sm:text-2xl font-bold text-white leading-tight">
-                  Interview Prep
-                </h1>
-                <p className="text-sm text-white/85 mt-1 max-w-2xl">
-                  A curated system-design library — fundamentals, patterns, and deep dives on the
-                  technologies you will be asked about by name. Inspired by hellointerview.com.
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">
+                    System Design Mastery
+                  </h1>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border"
+                    style={{ background: '#EEF2FF', color: '#4F46E5', borderColor: '#C7D2FE' }}>
+                    <Sparkles size={9} /> AI-Powered
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500 max-w-2xl leading-relaxed">
+                  Deep-dive explanations, animated diagrams, and AI mock practice — everything you need
+                  to master senior engineering system design interviews.
                 </p>
               </div>
             </div>
 
-            {/* Progress strip */}
-            <div className="mt-5 grid grid-cols-3 gap-3 sm:gap-4">
-              <div className="rounded-xl bg-white/10 px-4 py-3">
-                <p className="text-[11px] uppercase tracking-wider text-white/70 font-semibold">Topics</p>
-                <p className="text-white font-bold text-xl mt-0.5">{stats.total}</p>
-              </div>
-              <div className="rounded-xl bg-white/10 px-4 py-3">
-                <p className="text-[11px] uppercase tracking-wider text-white/70 font-semibold">Completed</p>
-                <p className="text-white font-bold text-xl mt-0.5">{stats.done}</p>
-              </div>
-              <div className="rounded-xl bg-white/10 px-4 py-3">
-                <p className="text-[11px] uppercase tracking-wider text-white/70 font-semibold">Progress</p>
-                <p className="text-white font-bold text-xl mt-0.5">{stats.pct}%</p>
-              </div>
+            {/* Feature pills */}
+            <div className="flex flex-wrap gap-2 mt-4">
+              {[
+                { label: 'Deep AI Explanations', dot: '#4F46E5' },
+                { label: 'Architecture Diagrams', dot: '#7C3AED' },
+                { label: 'Mock Interview Practice', dot: '#0891B2' },
+                { label: 'Progress Tracking', dot: '#059669' },
+              ].map(({ label, dot }) => (
+                <span key={label} className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-white border border-gray-200 text-gray-600 shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: dot }} />
+                  {label}
+                </span>
+              ))}
             </div>
 
-            <div className="mt-3 h-1.5 rounded-full bg-white/20 overflow-hidden">
-              <div className="h-full bg-white rounded-full transition-all duration-500"
-                style={{ width: `${stats.pct}%` }} />
+            {/* Progress */}
+            <div className="mt-4 bg-white rounded-xl border border-gray-200 shadow-sm p-3 sm:p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-gray-700">Learning Progress</span>
+                <span className="text-xs font-semibold" style={{ color: '#4F46E5' }}>{stats.pct}% complete</span>
+              </div>
+              <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden mb-3">
+                <div className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${stats.pct}%`, background: 'linear-gradient(90deg,#4F46E5,#7C3AED)' }} />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: 'Topics', value: stats.total, color: '#111827' },
+                  { label: 'Completed', value: stats.done, color: '#059669' },
+                  { label: 'Remaining', value: stats.total - stats.done, color: '#4F46E5' },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="text-center py-1.5 rounded-lg bg-gray-50">
+                    <p className="text-base font-bold" style={{ color }}>{value}</p>
+                    <p className="text-[10px] text-gray-400 font-medium mt-0.5">{label}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -209,6 +236,46 @@ export function InterviewPrepPage({ onPractice }: Props) {
                 </button>
               );
             })}
+          </div>
+        </div>
+
+        {/* ── AI Feature highlights ─────────────────────────────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                style={{ background: '#EEF2FF' }}>
+                <BookOpen size={14} style={{ color: '#4F46E5' }} />
+              </div>
+              <span className="text-xs font-semibold text-gray-800">Deep AI Explanations</span>
+            </div>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              All 25 topics include structured breakdowns with code examples, trade-off analyses, and comparison tables.
+            </p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                style={{ background: '#F5F3FF' }}>
+                <Sparkles size={14} style={{ color: '#7C3AED' }} />
+              </div>
+              <span className="text-xs font-semibold text-gray-800">AI Mock Practice</span>
+            </div>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Practice system design with an AI interviewer. Get real-time scoring and feedback on your architecture choices.
+            </p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                style={{ background: '#ECFDF5' }}>
+                <ListChecks size={14} style={{ color: '#059669' }} />
+              </div>
+              <span className="text-xs font-semibold text-gray-800">Track Your Progress</span>
+            </div>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Mark topics as complete and follow a structured path from core fundamentals to deep technology dives.
+            </p>
           </div>
         </div>
 
@@ -286,7 +353,7 @@ export function InterviewPrepPage({ onPractice }: Props) {
         )}
 
         <p className="text-center text-[11px] text-gray-400 pt-2">
-          Topics curated for system-design interview prep · save progress locally
+          AI-powered system design mastery · 25 topics · progress saved locally
         </p>
       </div>
 
@@ -326,6 +393,12 @@ function TopicCard({ topic, done, onOpen, onToggleDone }: {
         <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
           {CATEGORY_META[topic.category].label}
         </span>
+        {topic.deep && topic.deep.length > 0 && (
+          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+            style={{ background: '#EEF2FF', color: '#4F46E5' }}>
+            AI
+          </span>
+        )}
       </div>
 
       <h3 className="text-sm font-bold text-gray-900 leading-snug group-hover:text-indigo-600 transition-colors">
