@@ -3,10 +3,11 @@ const { Redis } = require('@upstash/redis');
 const PREFIX = 'jc:';
 const stats  = { hits: 0, misses: 0, staleHits: 0, sets: 0 };
 
-const redis = new Redis({
-  url:   process.env.UPSTASH_REDIS_REST_URL,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN,
-});
+const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL;
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const redis       = (REDIS_URL && REDIS_TOKEN) ? new Redis({ url: REDIS_URL, token: REDIS_TOKEN }) : null;
+
+if (!redis) console.warn('[Cache] UPSTASH_REDIS_REST_URL / TOKEN not set — caching disabled, all requests will hit the source.');
 
 // ── Core operations ────────────────────────────────────────────────────────
 
@@ -18,6 +19,7 @@ const redis = new Redis({
  * @param {number} staleTtlMs  — serve stale (SWR) for this additional duration
  */
 async function setCache(key, data, freshTtlMs = 15 * 60 * 1000, staleTtlMs = 0) {
+  if (!redis) return;
   const now   = Date.now();
   const entry = {
     data,
@@ -41,6 +43,7 @@ async function setCache(key, data, freshTtlMs = 15 * 60 * 1000, staleTtlMs = 0) 
  * Returns { data, isStale: true  } if stale but within staleTtl.
  */
 async function getWithMeta(key) {
+  if (!redis) { stats.misses++; return null; }
   try {
     const entry = await redis.get(PREFIX + key);
     if (!entry) { stats.misses++; return null; }

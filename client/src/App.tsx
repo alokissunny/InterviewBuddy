@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Mic, Search, Users, Zap, LogOut, ChevronDown,
   Briefcase, GraduationCap, Code2, Edit3, MapPin,
-  UserCircle2, ClipboardList,
+  UserCircle2, ClipboardList, BookOpen, ArrowLeft,
 } from 'lucide-react';
 import { CandidateProfile } from './types';
 import { LoginPage, CVOnboardingPage } from './pages/SetupPage';
@@ -11,9 +11,10 @@ import { JobsPage } from './pages/JobsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ConnectionsPage } from './pages/ConnectionsPage';
 import { MockInterviewPage } from './pages/MockInterviewPage';
+import { InterviewPrepPage } from './pages/InterviewPrepPage';
 
-export type MainTab = 'interview' | 'mock' | 'jobs' | 'connections' | 'profile';
-type AppPage = 'login' | 'cv-onboarding' | 'main';
+export type MainTab = 'interview' | 'mock' | 'learn' | 'jobs' | 'connections' | 'profile';
+type AppPage = 'login' | 'cv-onboarding' | 'main' | 'browse-learn';
 
 const PROFILE_KEY = 'jobcracker_profile';
 
@@ -117,6 +118,7 @@ function AppHeader({ profile, onChangeProfile, onViewProfile }: {
 const NAV_ITEMS: { id: MainTab; label: string; icon: React.ReactNode; soon?: boolean }[] = [
   { id: 'interview',   label: 'Interview',   icon: <Mic size={18} /> },
   { id: 'mock',        label: 'Mock',        icon: <ClipboardList size={18} /> },
+  { id: 'learn',       label: 'Learn',       icon: <BookOpen size={18} /> },
   { id: 'jobs',        label: 'Jobs',        icon: <Search size={18} /> },
   { id: 'connections', label: 'Connections', icon: <Users size={18} /> },
 ];
@@ -268,6 +270,7 @@ function Sidebar({ profile, activeTab, onTabChange }: {
 const BOTTOM_NAV_ITEMS: { id: MainTab; label: string; Icon: React.ElementType; soon?: boolean }[] = [
   { id: 'interview',   label: 'Coach',   Icon: Mic           },
   { id: 'mock',        label: 'Mock',    Icon: ClipboardList },
+  { id: 'learn',       label: 'Learn',   Icon: BookOpen      },
   { id: 'jobs',        label: 'Jobs',    Icon: Search        },
   { id: 'connections', label: 'Network', Icon: Users         },
   { id: 'profile',     label: 'Profile', Icon: UserCircle2   },
@@ -339,6 +342,7 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const lp      = params.get('lp');
     const liError = params.get('linkedin_error');
+    const hash    = window.location.hash;
     window.history.replaceState({}, '', window.location.pathname);
 
     if (lp) {
@@ -365,7 +369,13 @@ export default function App() {
     if (saved) {
       setProfile(saved);
       setPage('main');
+      // Deep link directly to Learn tab if requested
+      if (hash === '#learn') setActiveTab('learn');
+      return;
     }
+
+    // Guest deep link → public Learn view
+    if (hash === '#learn') setPage('browse-learn');
   }, []);
 
   const handleCVComplete = (enriched: CandidateProfile) => {
@@ -396,7 +406,15 @@ export default function App() {
   };
 
   if (page === 'login') {
-    return <LoginPage linkedinError={linkedinError} onClearLinkedinError={() => setLinkedinError(null)} />;
+    return <LoginPage
+      linkedinError={linkedinError}
+      onClearLinkedinError={() => setLinkedinError(null)}
+      onBrowseLearn={() => setPage('browse-learn')}
+    />;
+  }
+
+  if (page === 'browse-learn') {
+    return <BrowseLearnShell onBack={() => setPage('login')} />;
   }
 
   if (page === 'cv-onboarding' && pendingProfile) {
@@ -420,6 +438,7 @@ export default function App() {
               <InterviewPage profile={profile} onReset={handleChangeProfile} onChangeProfile={handleChangeProfile} />
             )}
             {activeTab === 'mock' && <MockInterviewPage profile={profile} />}
+            {activeTab === 'learn' && <InterviewPrepPage onPractice={() => setActiveTab('mock')} />}
             {activeTab === 'jobs' && <JobsPage profile={profile} />}
             {activeTab === 'connections' && <ConnectionsPage userProfile={profile} />}
             {activeTab === 'profile' && (
@@ -434,5 +453,70 @@ export default function App() {
     );
   }
 
-  return <LoginPage linkedinError={linkedinError} onClearLinkedinError={() => setLinkedinError(null)} />;
+  return <LoginPage
+    linkedinError={linkedinError}
+    onClearLinkedinError={() => setLinkedinError(null)}
+    onBrowseLearn={() => setPage('browse-learn')}
+  />;
+}
+
+// ── Public Learn shell (no login required) ────────────────────────────────────
+
+function BrowseLearnShell({ onBack }: { onBack: () => void }) {
+  return (
+    <div
+      className="flex flex-col overflow-hidden"
+      style={{ height: '100dvh', background: '#F3F2EF' }}
+    >
+      {/* Public header */}
+      <header
+        className="flex items-center shrink-0 h-14 px-4 sm:px-6 gap-3"
+        style={{
+          background: '#0d1117',
+          borderBottom: '1px solid rgba(255,255,255,0.07)',
+          boxShadow: '0 1px 20px rgba(0,0,0,0.4)',
+        }}
+      >
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white px-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
+        >
+          <ArrowLeft size={13} /> Home
+        </button>
+
+        <div className="flex items-center gap-2.5 ml-1">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)', boxShadow: '0 0 14px rgba(79,70,229,0.5)' }}>
+            <Zap size={16} className="text-white" />
+          </div>
+          <span className="text-white font-bold text-base tracking-tight">
+            JobCracker<span className="text-indigo-400 font-normal text-sm">.in</span>
+          </span>
+          <span className="hidden sm:inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 ml-1">
+            Learn · Free
+          </span>
+        </div>
+
+        <div className="flex-1" />
+
+        <a
+          href="/auth/linkedin"
+          className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 hover:border-white/20 transition-colors"
+        >
+          Sign in
+        </a>
+        <a
+          href="/auth/linkedin"
+          className="flex items-center gap-1.5 text-xs font-semibold text-white px-3 py-1.5 rounded-lg transition-all"
+          style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)', boxShadow: '0 2px 12px rgba(79,70,229,0.4)' }}
+        >
+          Get started →
+        </a>
+      </header>
+
+      <main className="flex-1 overflow-hidden">
+        <InterviewPrepPage />
+      </main>
+    </div>
+  );
 }

@@ -114,7 +114,7 @@ function BtnPrimary({ href, children, onClick }: { href?: string; children: Reac
 
 
 // ─── Nav ──────────────────────────────────────────────────────────────────────
-function Nav() {
+function Nav({ onBrowseLearn }: { onBrowseLearn?: () => void }) {
   return (
     <nav className="jc-nav" style={{
       position: 'relative', zIndex: 10,
@@ -134,10 +134,28 @@ function Nav() {
       </div>
 
       {/* Nav links */}
-      <div className="jc-nav-links" style={{ display: 'flex', gap: 28, color: T.inkDim, fontSize: 13.5 }}>
+      <div className="jc-nav-links" style={{ display: 'flex', gap: 28, color: T.inkDim, fontSize: 13.5, alignItems: 'center' }}>
         {[['Features','#features'],['How it works','#how']].map(([l, h]) => (
           <a key={l} href={h} style={{ color: T.inkDim, textDecoration: 'none' }}>{l}</a>
         ))}
+        {onBrowseLearn && (
+          <button
+            onClick={onBrowseLearn}
+            style={{
+              color: T.ink, textDecoration: 'none', background: 'none', border: 'none',
+              padding: 0, margin: 0, fontFamily: T.sans, fontSize: 13.5, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            Learn
+            <span style={{
+              fontFamily: T.mono, fontSize: 9.5, fontWeight: 600,
+              color: T.accent, letterSpacing: 0,
+              border: `1px solid ${T.accent}40`, padding: '1px 5px', borderRadius: 3,
+              background: `${T.accent}10`,
+            }}>FREE</span>
+          </button>
+        )}
       </div>
 
       {/* Nav right */}
@@ -642,15 +660,16 @@ function Footer() {
 interface LoginPageProps {
   linkedinError?: string | null;
   onClearLinkedinError?: () => void;
+  onBrowseLearn?: () => void;
 }
 
-export function LoginPage({ linkedinError, onClearLinkedinError }: LoginPageProps) {
+export function LoginPage({ linkedinError, onClearLinkedinError, onBrowseLearn }: LoginPageProps) {
   return (
     <div style={{ background: T.bg, color: T.ink, fontFamily: T.sans, WebkitFontSmoothing: 'antialiased', overflowX: 'hidden', minHeight: '100vh' }}>
       <InjectStyles />
       <Ambient />
 
-      <Nav />
+      <Nav onBrowseLearn={onBrowseLearn} />
 
       {/* Hero */}
       <section className="jc-hero-section" style={{ position: 'relative', zIndex: 2, padding: '80px 0 60px' }}>
@@ -690,6 +709,24 @@ export function LoginPage({ linkedinError, onClearLinkedinError }: LoginPageProp
 
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: 40 }}>
               <BtnPrimary href="/auth/linkedin">Start free <span>→</span></BtnPrimary>
+              {onBrowseLearn && (
+                <button
+                  onClick={onBrowseLearn}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    padding: '9px 16px', borderRadius: 6,
+                    background: 'transparent', color: T.ink,
+                    fontSize: 13.5, fontWeight: 500, fontFamily: T.sans,
+                    whiteSpace: 'nowrap', cursor: 'pointer',
+                    border: `1px solid ${T.line2}`,
+                    transition: 'background .15s ease, border-color .15s ease',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.04)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+                >
+                  Browse Learn — no signup <span style={{ color: T.accent }}>↗</span>
+                </button>
+              )}
             </div>
 
             {/* Stat strip */}

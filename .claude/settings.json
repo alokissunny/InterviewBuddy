@@ -24,7 +24,8 @@
       "Read(//tmp/jobcracker/project/**)",
       "Bash(curl -s -L \"https://api.anthropic.com/v1/design/h/Ur6ECloG45UntuwsKKWmeA?open_file=JobCracker.html\" -o /tmp/design2.gz)",
       "Read(//tmp/**)",
-      "Bash(node scripts/prefetch-jobs.js)"
+      "Bash(node scripts/prefetch-jobs.js)",
+      "Bash(npx vite *)"
     ]
   }
 }
