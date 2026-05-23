@@ -139,86 +139,35 @@ export function InterviewPrepPage({ onPractice }: Props) {
           />
         ) : (
           <div className="h-full overflow-y-auto bg-[#F3F2EF]">
-            <div className="max-w-5xl mx-auto px-4 sm:px-5 py-6 space-y-5">
+            <div className="max-w-5xl mx-auto px-4 sm:px-5 py-5 space-y-4">
 
-              {/* ── Hero header ───────────────────────────────────────────── */}
-              <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
-                <div className="px-5 sm:px-6 py-5 sm:py-6"
-                  style={{ background: 'linear-gradient(135deg,#FFFFFF 0%,#EEF2FF 55%,#F5F3FF 100%)' }}>
-
-                  <div className="flex items-start gap-3 sm:gap-4">
-                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
-                      style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)' }}>
-                      <BookOpen size={20} className="text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">
-                          System Design Mastery
-                        </h1>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border"
-                          style={{ background: '#EEF2FF', color: '#4F46E5', borderColor: '#C7D2FE' }}>
-                          <Sparkles size={9} /> AI-Powered
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-500 max-w-2xl leading-relaxed">
-                        Deep-dive explanations, animated diagrams, and AI mock practice — everything you need
-                        to master senior engineering system design interviews.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    {[
-                      { label: 'Deep AI Explanations', dot: '#4F46E5' },
-                      { label: 'Architecture Diagrams', dot: '#7C3AED' },
-                      { label: 'Mock Interview Practice', dot: '#0891B2' },
-                      { label: 'Progress Tracking', dot: '#059669' },
-                    ].map(({ label, dot }) => (
-                      <span key={label} className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-white border border-gray-200 text-gray-600 shadow-sm">
-                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: dot }} />
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="mt-4 bg-white rounded-xl border border-gray-200 shadow-sm p-3 sm:p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-gray-700">Learning Progress</span>
-                      <span className="text-xs font-semibold" style={{ color: '#4F46E5' }}>{stats.pct}% complete</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden mb-3">
-                      <div className="h-full rounded-full transition-all duration-700"
-                        style={{ width: `${stats.pct}%`, background: 'linear-gradient(90deg,#4F46E5,#7C3AED)' }} />
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { label: 'Topics', value: stats.total, color: '#111827' },
-                        { label: 'Completed', value: stats.done, color: '#059669' },
-                        { label: 'Remaining', value: stats.total - stats.done, color: '#4F46E5' },
-                      ].map(({ label, value, color }) => (
-                        <div key={label} className="text-center py-1.5 rounded-lg bg-gray-50">
-                          <p className="text-base font-bold" style={{ color }}>{value}</p>
-                          <p className="text-[10px] text-gray-400 font-medium mt-0.5">{label}</p>
-                        </div>
-                      ))}
-                    </div>
+              {/* ── Compact header ────────────────────────────────────────── */}
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-lg font-bold text-gray-900">System Design</h1>
+                  <p className="text-xs text-gray-500 mt-0.5">{stats.done}/{stats.total} topics complete</p>
+                </div>
+                <div className="flex-1 max-w-xs">
+                  <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${stats.pct}%`, background: 'linear-gradient(90deg,#4F46E5,#7C3AED)' }} />
                   </div>
                 </div>
+                <span className="text-xs font-semibold text-indigo-600 shrink-0">{stats.pct}%</span>
               </div>
 
               {/* ── Search + filter ───────────────────────────────────────── */}
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-3 flex flex-col sm:flex-row gap-2 sm:items-center">
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-2.5 flex flex-col sm:flex-row gap-2 sm:items-center">
                 <div className="relative flex-1">
-                  <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     value={query}
                     onChange={e => setQuery(e.target.value)}
-                    placeholder="Search topics or questions, e.g. Bitly, Kafka, sharding, WhatsApp…"
-                    className="w-full pl-9 pr-3 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 bg-gray-50 border border-gray-200 focus:border-indigo-300 focus:bg-white rounded-xl outline-none transition-colors"
+                    placeholder="Search topics, e.g. Kafka, sharding, Bitly…"
+                    className="w-full pl-8 pr-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 bg-gray-50 border border-gray-200 focus:border-indigo-300 focus:bg-white rounded-lg outline-none transition-colors"
                   />
                 </div>
-                <div className="flex items-center gap-1.5 overflow-x-auto">
+                <div className="flex items-center gap-1 overflow-x-auto">
                   {(['all', 'core', 'pattern', 'deepdive', 'question'] as const).map(f => {
                     const isActive = filter === f;
                     const label =
@@ -229,9 +178,9 @@ export function InterviewPrepPage({ onPractice }: Props) {
                       <button
                         key={f}
                         onClick={() => setFilter(f)}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap transition-all ${
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-lg whitespace-nowrap transition-all ${
                           isActive
-                            ? 'bg-indigo-600 text-white shadow-sm'
+                            ? 'bg-indigo-600 text-white'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                       >
@@ -239,43 +188,6 @@ export function InterviewPrepPage({ onPractice }: Props) {
                       </button>
                     );
                   })}
-                </div>
-              </div>
-
-              {/* ── AI Feature highlights ─────────────────────────────────── */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                  <div className="flex items-center gap-2.5 mb-2">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#EEF2FF' }}>
-                      <BookOpen size={14} style={{ color: '#4F46E5' }} />
-                    </div>
-                    <span className="text-xs font-semibold text-gray-800">Deep AI Explanations</span>
-                  </div>
-                  <p className="text-xs text-gray-500 leading-relaxed">
-                    All 25 topics include structured breakdowns with code examples, trade-off analyses, and comparison tables.
-                  </p>
-                </div>
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                  <div className="flex items-center gap-2.5 mb-2">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#F5F3FF' }}>
-                      <Sparkles size={14} style={{ color: '#7C3AED' }} />
-                    </div>
-                    <span className="text-xs font-semibold text-gray-800">AI Mock Practice</span>
-                  </div>
-                  <p className="text-xs text-gray-500 leading-relaxed">
-                    Practice system design with an AI interviewer. Get real-time scoring and feedback on your architecture choices.
-                  </p>
-                </div>
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                  <div className="flex items-center gap-2.5 mb-2">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#ECFDF5' }}>
-                      <ListChecks size={14} style={{ color: '#059669' }} />
-                    </div>
-                    <span className="text-xs font-semibold text-gray-800">Track Your Progress</span>
-                  </div>
-                  <p className="text-xs text-gray-500 leading-relaxed">
-                    Mark topics as complete and follow a structured path from core fundamentals to deep technology dives.
-                  </p>
                 </div>
               </div>
 
@@ -352,9 +264,6 @@ export function InterviewPrepPage({ onPractice }: Props) {
                 </div>
               )}
 
-              <p className="text-center text-[11px] text-gray-400 pt-2">
-                AI-powered system design mastery · 25 topics · progress saved locally
-              </p>
             </div>
           </div>
         )}
@@ -586,52 +495,52 @@ function TopicDetailPage({ topic, done, onBack, onToggleDone, onNavigate, onPrac
   return (
     <div className="h-full overflow-y-auto bg-[#F3F2EF] flex flex-col">
 
-      {/* Sticky page header */}
-      <div className="sticky top-0 z-20 border-b border-gray-200"
-        style={{
-          background: `linear-gradient(135deg, ${accent}12 0%, ${accent}05 100%)`,
-          backdropFilter: 'blur(10px)',
-        }}>
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
-          <button onClick={onBack}
-            className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900 transition-colors mb-3">
-            <ArrowLeft size={13} /> Back to Learn
-          </button>
-
-          <div className="flex items-center gap-2 flex-wrap mb-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
-              style={{ background: `${accent}20`, color: accent }}>
-              {CATEGORY_META[topic.category].label}
-            </span>
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-              style={{ background: diff.bg, color: diff.fg }}>
-              {diff.label}
-            </span>
-          </div>
-
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
-            {topic.title}
-          </h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1.5 max-w-3xl">{topic.tagline}</p>
-        </div>
-      </div>
-
       {/* Main body */}
       {topic.deep && topic.deep.length > 0 ? (
         <div className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 pb-24 flex gap-8">
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            {/* Inline page title */}
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                  style={{ background: `${accent}20`, color: accent }}>
+                  {CATEGORY_META[topic.category].label}
+                </span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                  style={{ background: diff.bg, color: diff.fg }}>
+                  {diff.label}
+                </span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">{topic.title}</h1>
+              <p className="text-sm text-gray-500 mt-1">{topic.tagline}</p>
+            </div>
+            <DeepContentRenderer sections={topic.deep} />
+          </div>
           {/* Sticky TOC sidebar (desktop only) */}
           <aside className="hidden lg:block w-48 shrink-0">
             <div className="sticky top-6">
               <DeepContentTOC sections={topic.deep} activeId={activeSectionId} />
             </div>
           </aside>
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <DeepContentRenderer sections={topic.deep} />
-          </div>
         </div>
       ) : (
         <div className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 space-y-7 pb-24">
+          {/* Inline page title */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                style={{ background: `${accent}20`, color: accent }}>
+                {CATEGORY_META[topic.category].label}
+              </span>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: diff.bg, color: diff.fg }}>
+                {diff.label}
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">{topic.title}</h1>
+            <p className="text-sm text-gray-500 mt-1">{topic.tagline}</p>
+          </div>
 
           {/* Overview */}
           <Section icon={<BookOpen size={14} />} title="Overview" accent={accent}>
@@ -862,21 +771,13 @@ function QuestionDetailPage({ question, done, onBack, onToggleDone }: {
   return (
     <div className="h-full overflow-y-auto bg-[#F3F2EF] flex flex-col">
 
-      {/* Sticky page header */}
-      <div className="sticky top-0 z-20 border-b border-gray-200"
-        style={{
-          background: 'linear-gradient(135deg, #FEF3C7 0%, #FED7AA 100%)',
-          backdropFilter: 'blur(10px)',
-        }}>
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
-          <button onClick={onBack}
-            className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 hover:text-gray-900 transition-colors mb-3">
-            <ArrowLeft size={13} /> Back to Learn
-          </button>
+      {/* Main body */}
+      <div className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 space-y-7 pb-24">
 
-          <div className="flex items-center gap-2 flex-wrap mb-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
-              style={{ background: '#FFFFFF80', color: '#92400E' }}>
+        {/* Inline title */}
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
               Question Breakdown
             </span>
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
@@ -884,20 +785,15 @@ function QuestionDetailPage({ question, done, onBack, onToggleDone }: {
               {diff.label}
             </span>
           </div>
-
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight flex items-center gap-2 flex-wrap">
             <span className="text-3xl sm:text-4xl">{question.emoji}</span>
             {question.title}
           </h1>
-          <p className="text-sm sm:text-base text-gray-700 mt-1.5 italic">"{question.tagline}"</p>
-          <p className="text-xs sm:text-sm text-gray-600 mt-2 leading-relaxed max-w-3xl">
-            <span className="font-semibold">Interviewer asks: </span>{question.prompt}
+          <p className="text-sm text-gray-500 mt-1 italic">"{question.tagline}"</p>
+          <p className="text-xs text-gray-500 mt-1 max-w-3xl">
+            <span className="font-semibold text-gray-700">Interviewer asks: </span>{question.prompt}
           </p>
         </div>
-      </div>
-
-      {/* Main body */}
-      <div className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 space-y-7 pb-24">
 
         {/* Architecture diagram */}
         <Section icon={<Sparkles size={14} />} title="Architecture (live)" accent={accent}>
