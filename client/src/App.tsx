@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Mic, Search, Users, Zap, LogOut, ChevronDown,
-  Briefcase, GraduationCap, Code2, Edit3, MapPin,
   UserCircle2, ClipboardList, BookOpen, ArrowLeft,
 } from 'lucide-react';
 import { CandidateProfile } from './types';
@@ -35,8 +34,10 @@ function isProfileComplete(p: CandidateProfile): boolean {
 
 // ── Top Header ────────────────────────────────────────────────────────────────
 
-function AppHeader({ profile, onChangeProfile, onViewProfile }: {
+function AppHeader({ profile, activeTab, onTabChange, onChangeProfile, onViewProfile }: {
   profile: CandidateProfile;
+  activeTab: MainTab;
+  onTabChange: (t: MainTab) => void;
   onChangeProfile: () => void;
   onViewProfile: () => void;
 }) {
@@ -56,7 +57,7 @@ function AppHeader({ profile, onChangeProfile, onViewProfile }: {
     <header className="flex items-center shrink-0 h-14 px-4 sm:px-6 gap-4"
       style={{ background: 'white', borderBottom: '1px solid #E5E7EB', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
       {/* Logo */}
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2.5 shrink-0">
         <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
           style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)', boxShadow: '0 0 12px rgba(79,70,229,0.3)' }}>
           <Zap size={16} className="text-white" />
@@ -65,6 +66,33 @@ function AppHeader({ profile, onChangeProfile, onViewProfile }: {
           JobCracker<span className="text-indigo-600 font-normal text-sm">.in</span>
         </span>
       </div>
+
+      {/* Desktop nav tabs */}
+      <nav className="hidden md:flex items-center gap-0.5 ml-4">
+        {NAV_ITEMS.map(item => (
+          <button
+            key={item.id}
+            onClick={() => !item.soon && onTabChange(item.id)}
+            className={`relative flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              activeTab === item.id
+                ? 'bg-indigo-50 text-indigo-600'
+                : item.soon
+                ? 'text-gray-300 cursor-default'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            }`}
+          >
+            {item.label}
+            {item.soon && (
+              <span className="text-[8px] font-bold px-1 py-0.5 rounded-full bg-amber-50 text-amber-500 border border-amber-100 leading-none">
+                Soon
+              </span>
+            )}
+            {activeTab === item.id && (
+              <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full bg-indigo-500" />
+            )}
+          </button>
+        ))}
+      </nav>
 
       <div className="flex-1" />
 
@@ -113,8 +141,6 @@ function AppHeader({ profile, onChangeProfile, onViewProfile }: {
   );
 }
 
-// ── Sidebar (desktop only) ───────────────────────────────────────────────────
-
 const NAV_ITEMS: { id: MainTab; label: string; icon: React.ReactNode; soon?: boolean }[] = [
   { id: 'interview',   label: 'Interview',   icon: <Mic size={18} /> },
   { id: 'mock',        label: 'Mock',        icon: <ClipboardList size={18} /> },
@@ -122,148 +148,6 @@ const NAV_ITEMS: { id: MainTab; label: string; icon: React.ReactNode; soon?: boo
   { id: 'jobs',        label: 'Jobs',        icon: <Search size={18} /> },
   { id: 'connections', label: 'Connections', icon: <Users size={18} /> },
 ];
-
-function Sidebar({ profile, activeTab, onTabChange }: {
-  profile: CandidateProfile;
-  activeTab: MainTab;
-  onTabChange: (t: MainTab) => void;
-}) {
-  const initials = profile.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-
-  return (
-    <aside
-      className="hidden md:flex w-72 shrink-0 flex-col gap-3 p-4 overflow-y-auto"
-      style={{ background: '#F3F2EF' }}
-    >
-      {/* Profile Card */}
-      <div className="rounded-2xl bg-white shadow-sm border border-gray-200">
-        {/* Cover banner */}
-        <div className="h-20 rounded-t-2xl relative"
-          style={{ background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 60%, #9333EA 100%)' }}>
-          <button
-            onClick={() => onTabChange('profile')}
-            className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white transition-colors"
-            title="Edit profile"
-          >
-            <Edit3 size={13} />
-          </button>
-        </div>
-
-        <div className="px-5 pb-5">
-          <div className="relative h-10 mb-1">
-            <div className="absolute -top-10">
-              {profile.photoUrl ? (
-                <img src={profile.photoUrl} alt={profile.name}
-                  className="w-20 h-20 rounded-full object-cover ring-4 ring-white shadow-md" />
-              ) : (
-                <div className="w-20 h-20 rounded-full flex items-center justify-center ring-4 ring-white shadow-md"
-                  style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)' }}>
-                  <span className="text-white text-2xl font-bold">{initials}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <h2 className="text-gray-900 font-bold text-lg leading-tight">{profile.name}</h2>
-          {profile.title && (
-            <p className="text-indigo-600 text-sm font-medium mt-0.5">{profile.title}</p>
-          )}
-          {profile.email && (
-            <p className="flex items-center gap-1 text-gray-400 text-xs mt-1.5">
-              <MapPin size={10} /> {profile.email}
-            </p>
-          )}
-
-          {profile.summary && (
-            <p className="text-gray-500 text-xs mt-3 leading-relaxed line-clamp-3">
-              {profile.summary}
-            </p>
-          )}
-
-          <div className="flex gap-4 mt-4 pt-4 border-t border-gray-100">
-            {(profile.experience?.length ?? 0) > 0 && (
-              <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                <Briefcase size={12} className="text-indigo-400" />
-                <span className="font-semibold text-gray-700">{profile.experience.length}</span>
-                roles
-              </div>
-            )}
-            {(profile.skills?.length ?? 0) > 0 && (
-              <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                <Code2 size={12} className="text-indigo-400" />
-                <span className="font-semibold text-gray-700">{profile.skills.length}</span>
-                skills
-              </div>
-            )}
-            {(profile.education?.length ?? 0) > 0 && (
-              <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                <GraduationCap size={12} className="text-indigo-400" />
-                <span className="font-semibold text-gray-700">{profile.education.length}</span>
-                degrees
-              </div>
-            )}
-          </div>
-
-          {(profile.skills?.length ?? 0) > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-4">
-              {profile.skills.slice(0, 8).map(s => (
-                <span key={s}
-                  className="text-xs px-2.5 py-1 rounded-full font-medium"
-                  style={{ background: '#EEF2FF', color: '#4F46E5' }}>
-                  {s}
-                </span>
-              ))}
-              {profile.skills.length > 8 && (
-                <span className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 font-medium">
-                  +{profile.skills.length - 8}
-                </span>
-              )}
-            </div>
-          )}
-
-          {profile.experience?.[0] && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Latest Role</p>
-              <p className="text-sm font-semibold text-gray-800 leading-snug">{profile.experience[0].role}</p>
-              <p className="text-xs text-gray-500">{profile.experience[0].company} · {profile.experience[0].duration}</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <nav className="rounded-2xl bg-white shadow-sm border border-gray-200 overflow-hidden">
-        <p className="px-4 pt-3 pb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Menu</p>
-        {NAV_ITEMS.map(item => (
-          <button
-            key={item.id}
-            onClick={() => onTabChange(item.id)}
-            className={`flex items-center gap-3 w-full px-4 py-3 text-sm font-medium transition-all text-left ${
-              activeTab === item.id
-                ? 'text-indigo-600 bg-indigo-50'
-                : item.soon
-                ? 'text-gray-400 hover:bg-gray-50'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-            }`}
-          >
-            <span className={activeTab === item.id ? 'text-indigo-500' : 'text-gray-300'}>
-              {item.icon}
-            </span>
-            {item.label}
-            {item.soon
-              ? <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-500 border border-amber-100">Soon</span>
-              : activeTab === item.id && <span className="ml-auto w-1.5 h-5 rounded-full bg-indigo-500" />
-            }
-          </button>
-        ))}
-      </nav>
-
-      <p className="text-center text-xs text-gray-400 px-2">
-        JobCracker.in · AI-powered career tools
-      </p>
-    </aside>
-  );
-}
 
 // ── Bottom Navigation (mobile only) ─────────────────────────────────────────
 
@@ -427,12 +311,15 @@ export default function App() {
         className="flex flex-col overflow-hidden"
         style={{ height: '100dvh', background: '#F3F2EF' }}
       >
-        <AppHeader profile={profile} onChangeProfile={handleChangeProfile} onViewProfile={() => setActiveTab('profile')} />
+        <AppHeader
+          profile={profile}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          onChangeProfile={handleChangeProfile}
+          onViewProfile={() => setActiveTab('profile')}
+        />
 
         <div className="flex-1 flex overflow-hidden min-h-0">
-          {/* Sidebar — desktop only */}
-          <Sidebar profile={profile} activeTab={activeTab} onTabChange={setActiveTab} />
-
           <main className="flex-1 overflow-hidden">
             {activeTab === 'interview' && (
               <InterviewPage profile={profile} onReset={handleChangeProfile} onChangeProfile={handleChangeProfile} />

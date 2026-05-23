@@ -3,6 +3,7 @@ import {
   BookOpen, ArrowLeft, CheckCircle2, Circle, Search,
   Sparkles, ListChecks, GitBranch, Database, Layers,
   Zap, ExternalLink, MessageSquareQuote, Target, AlertTriangle,
+  ChevronDown,
 } from 'lucide-react';
 import {
   TOPICS, CATEGORY_META, topicById,
@@ -57,6 +58,9 @@ export function InterviewPrepPage({ onPractice }: Props) {
   const toggleDone = (id: string) =>
     setProgress(p => ({ ...p, [id]: !p[id] }));
 
+  const handleSelectTopic = (id: string) => { setActiveId(id); setActiveQId(null); };
+  const handleSelectQuestion = (id: string) => { setActiveQId(id); setActiveId(null); };
+
   const showQuestions = filter === 'all' || filter === 'question';
   const showTopics    = filter !== 'question';
 
@@ -102,262 +106,377 @@ export function InterviewPrepPage({ onPractice }: Props) {
   const active   = activeId  ? topicById(activeId)   : null;
   const activeQ  = activeQId ? questionById(activeQId) : null;
 
-  // ── Full-page detail views ──────────────────────────────────────
-  if (active) {
-    return (
-      <TopicDetailPage
-        topic={active}
-        done={!!progress[active.id]}
-        onBack={() => setActiveId(null)}
-        onToggleDone={() => toggleDone(active.id)}
-        onNavigate={id => {
-          // Sibling navigation: jump to another concept topic
-          setActiveId(id);
-          window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
-        }}
-        onPractice={onPractice}
+  return (
+    <div className="h-full flex overflow-hidden">
+      {/* ── Left sidebar ──────────────────────────────────────────── */}
+      <LearnSidebar
+        activeId={activeId}
+        activeQId={activeQId}
+        progress={progress}
+        onSelectTopic={handleSelectTopic}
+        onSelectQuestion={handleSelectQuestion}
       />
-    );
-  }
 
-  if (activeQ) {
-    return (
-      <QuestionDetailPage
-        question={activeQ}
-        done={!!progress[activeQ.id]}
-        onBack={() => setActiveQId(null)}
-        onToggleDone={() => toggleDone(activeQ.id)}
-      />
-    );
-  }
+      {/* ── Right content area ────────────────────────────────────── */}
+      <div className="flex-1 overflow-hidden">
+        {active ? (
+          <TopicDetailPage
+            key={active.id}
+            topic={active}
+            done={!!progress[active.id]}
+            onBack={() => setActiveId(null)}
+            onToggleDone={() => toggleDone(active.id)}
+            onNavigate={handleSelectTopic}
+            onPractice={onPractice}
+          />
+        ) : activeQ ? (
+          <QuestionDetailPage
+            key={activeQ.id}
+            question={activeQ}
+            done={!!progress[activeQ.id]}
+            onBack={() => setActiveQId(null)}
+            onToggleDone={() => toggleDone(activeQ.id)}
+          />
+        ) : (
+          <div className="h-full overflow-y-auto bg-[#F3F2EF]">
+            <div className="max-w-5xl mx-auto px-4 sm:px-5 py-6 space-y-5">
+
+              {/* ── Hero header ───────────────────────────────────────────── */}
+              <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
+                <div className="px-5 sm:px-6 py-5 sm:py-6"
+                  style={{ background: 'linear-gradient(135deg,#FFFFFF 0%,#EEF2FF 55%,#F5F3FF 100%)' }}>
+
+                  <div className="flex items-start gap-3 sm:gap-4">
+                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
+                      style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)' }}>
+                      <BookOpen size={20} className="text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">
+                          System Design Mastery
+                        </h1>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border"
+                          style={{ background: '#EEF2FF', color: '#4F46E5', borderColor: '#C7D2FE' }}>
+                          <Sparkles size={9} /> AI-Powered
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-500 max-w-2xl leading-relaxed">
+                        Deep-dive explanations, animated diagrams, and AI mock practice — everything you need
+                        to master senior engineering system design interviews.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {[
+                      { label: 'Deep AI Explanations', dot: '#4F46E5' },
+                      { label: 'Architecture Diagrams', dot: '#7C3AED' },
+                      { label: 'Mock Interview Practice', dot: '#0891B2' },
+                      { label: 'Progress Tracking', dot: '#059669' },
+                    ].map(({ label, dot }) => (
+                      <span key={label} className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-white border border-gray-200 text-gray-600 shadow-sm">
+                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: dot }} />
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 bg-white rounded-xl border border-gray-200 shadow-sm p-3 sm:p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-gray-700">Learning Progress</span>
+                      <span className="text-xs font-semibold" style={{ color: '#4F46E5' }}>{stats.pct}% complete</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden mb-3">
+                      <div className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${stats.pct}%`, background: 'linear-gradient(90deg,#4F46E5,#7C3AED)' }} />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { label: 'Topics', value: stats.total, color: '#111827' },
+                        { label: 'Completed', value: stats.done, color: '#059669' },
+                        { label: 'Remaining', value: stats.total - stats.done, color: '#4F46E5' },
+                      ].map(({ label, value, color }) => (
+                        <div key={label} className="text-center py-1.5 rounded-lg bg-gray-50">
+                          <p className="text-base font-bold" style={{ color }}>{value}</p>
+                          <p className="text-[10px] text-gray-400 font-medium mt-0.5">{label}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Search + filter ───────────────────────────────────────── */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-3 flex flex-col sm:flex-row gap-2 sm:items-center">
+                <div className="relative flex-1">
+                  <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    placeholder="Search topics or questions, e.g. Bitly, Kafka, sharding, WhatsApp…"
+                    className="w-full pl-9 pr-3 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 bg-gray-50 border border-gray-200 focus:border-indigo-300 focus:bg-white rounded-xl outline-none transition-colors"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 overflow-x-auto">
+                  {(['all', 'core', 'pattern', 'deepdive', 'question'] as const).map(f => {
+                    const isActive = filter === f;
+                    const label =
+                      f === 'all'      ? 'All' :
+                      f === 'question' ? 'Questions' :
+                      CATEGORY_META[f].label;
+                    return (
+                      <button
+                        key={f}
+                        onClick={() => setFilter(f)}
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap transition-all ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-sm'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── AI Feature highlights ─────────────────────────────────── */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#EEF2FF' }}>
+                      <BookOpen size={14} style={{ color: '#4F46E5' }} />
+                    </div>
+                    <span className="text-xs font-semibold text-gray-800">Deep AI Explanations</span>
+                  </div>
+                  <p className="text-xs text-gray-500 leading-relaxed">
+                    All 25 topics include structured breakdowns with code examples, trade-off analyses, and comparison tables.
+                  </p>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#F5F3FF' }}>
+                      <Sparkles size={14} style={{ color: '#7C3AED' }} />
+                    </div>
+                    <span className="text-xs font-semibold text-gray-800">AI Mock Practice</span>
+                  </div>
+                  <p className="text-xs text-gray-500 leading-relaxed">
+                    Practice system design with an AI interviewer. Get real-time scoring and feedback on your architecture choices.
+                  </p>
+                </div>
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#ECFDF5' }}>
+                      <ListChecks size={14} style={{ color: '#059669' }} />
+                    </div>
+                    <span className="text-xs font-semibold text-gray-800">Track Your Progress</span>
+                  </div>
+                  <p className="text-xs text-gray-500 leading-relaxed">
+                    Mark topics as complete and follow a structured path from core fundamentals to deep technology dives.
+                  </p>
+                </div>
+              </div>
+
+              {/* ── Concept sections ──────────────────────────────────────── */}
+              {showTopics && (['core', 'pattern', 'deepdive'] as TopicCategory[]).map(cat => {
+                const items = grouped[cat];
+                if (items.length === 0) return null;
+                const meta = CATEGORY_META[cat];
+                const Icon = CATEGORY_ICON[cat];
+
+                return (
+                  <section key={cat} className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ background: `${meta.accent}15`, border: `1px solid ${meta.accent}30` }}>
+                        <Icon size={17} style={{ color: meta.accent }} />
+                      </div>
+                      <div>
+                        <h2 className="text-base font-bold text-gray-900 leading-tight">{meta.label}</h2>
+                        <p className="text-xs text-gray-500">{meta.description}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {items.map(t => (
+                        <TopicCard
+                          key={t.id}
+                          topic={t}
+                          done={!!progress[t.id]}
+                          onOpen={() => handleSelectTopic(t.id)}
+                          onToggleDone={() => toggleDone(t.id)}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+
+              {/* ── Question Breakdowns ───────────────────────────────────── */}
+              {showQuestions && visibleQuestions.length > 0 && (
+                <section className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: '#F59E0B15', border: '1px solid #F59E0B30' }}>
+                      <MessageSquareQuote size={17} style={{ color: '#D97706' }} />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-gray-900 leading-tight">Question Breakdowns</h2>
+                      <p className="text-xs text-gray-500">Walked-through system design questions with animated diagrams and a quirky tone.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {visibleQuestions.map(q => (
+                      <QuestionCard
+                        key={q.id}
+                        question={q}
+                        done={!!progress[q.id]}
+                        onOpen={() => handleSelectQuestion(q.id)}
+                        onToggleDone={() => toggleDone(q.id)}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {visible.length === 0 && visibleQuestions.length === 0 && (
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-10 text-center">
+                  <p className="text-sm text-gray-500">No topics match "{query}".</p>
+                  <button onClick={() => { setQuery(''); setFilter('all'); }}
+                    className="text-xs text-indigo-600 font-semibold mt-3 hover:underline">
+                    Clear filters
+                  </button>
+                </div>
+              )}
+
+              <p className="text-center text-[11px] text-gray-400 pt-2">
+                AI-powered system design mastery · 25 topics · progress saved locally
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Learn sidebar ───────────────────────────────────────────────────
+
+function LearnSidebar({ activeId, activeQId, progress, onSelectTopic, onSelectQuestion }: {
+  activeId: string | null;
+  activeQId: string | null;
+  progress: Record<string, boolean>;
+  onSelectTopic: (id: string) => void;
+  onSelectQuestion: (id: string) => void;
+}) {
+  const [open, setOpen] = useState<Record<string, boolean>>({
+    core: true, pattern: true, deepdive: true, questions: true,
+  });
+
+  const toggle = (key: string) => setOpen(s => ({ ...s, [key]: !s[key] }));
+
+  const sectionLabel: Record<TopicCategory, string> = {
+    core:     'Core Concepts',
+    pattern:  'Patterns',
+    deepdive: 'Key Technologies',
+  };
 
   return (
-    <div className="h-full overflow-y-auto bg-[#F3F2EF]">
-      <div className="max-w-5xl mx-auto px-4 sm:px-5 py-6 space-y-5">
+    <aside className="hidden lg:flex flex-col w-60 shrink-0 overflow-y-auto"
+      style={{ background: 'white', borderRight: '1px solid #E5E7EB' }}>
 
-        {/* ── Hero header ───────────────────────────────────────────── */}
-        <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
-          <div className="px-5 sm:px-6 py-5 sm:py-6"
-            style={{ background: 'linear-gradient(135deg,#FFFFFF 0%,#EEF2FF 55%,#F5F3FF 100%)' }}>
+      {/* Header */}
+      <div className="px-4 pt-5 pb-3 border-b border-gray-100">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+          Learn System Design
+        </p>
+      </div>
 
-            {/* Icon + title + AI badge */}
-            <div className="flex items-start gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
-                style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)' }}>
-                <BookOpen size={20} className="text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight">
-                    System Design Mastery
-                  </h1>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border"
-                    style={{ background: '#EEF2FF', color: '#4F46E5', borderColor: '#C7D2FE' }}>
-                    <Sparkles size={9} /> AI-Powered
-                  </span>
-                </div>
-                <p className="text-sm text-gray-500 max-w-2xl leading-relaxed">
-                  Deep-dive explanations, animated diagrams, and AI mock practice — everything you need
-                  to master senior engineering system design interviews.
-                </p>
-              </div>
-            </div>
+      {/* Topic sections */}
+      {(['core', 'pattern', 'deepdive'] as TopicCategory[]).map(cat => {
+        const items = TOPICS.filter(t => t.category === cat);
+        const isOpen = open[cat];
+        return (
+          <div key={cat}>
+            <button
+              onClick={() => toggle(cat)}
+              className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-gray-50 transition-colors"
+            >
+              <span className="text-xs font-semibold text-gray-700">{sectionLabel[cat]}</span>
+              <ChevronDown size={12} className={`text-gray-400 transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`} />
+            </button>
 
-            {/* Feature pills */}
-            <div className="flex flex-wrap gap-2 mt-4">
-              {[
-                { label: 'Deep AI Explanations', dot: '#4F46E5' },
-                { label: 'Architecture Diagrams', dot: '#7C3AED' },
-                { label: 'Mock Interview Practice', dot: '#0891B2' },
-                { label: 'Progress Tracking', dot: '#059669' },
-              ].map(({ label, dot }) => (
-                <span key={label} className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-white border border-gray-200 text-gray-600 shadow-sm">
-                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: dot }} />
-                  {label}
-                </span>
-              ))}
-            </div>
-
-            {/* Progress */}
-            <div className="mt-4 bg-white rounded-xl border border-gray-200 shadow-sm p-3 sm:p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-gray-700">Learning Progress</span>
-                <span className="text-xs font-semibold" style={{ color: '#4F46E5' }}>{stats.pct}% complete</span>
+            {isOpen && (
+              <div className="pb-1">
+                {items.map(t => {
+                  const isActive = activeId === t.id;
+                  const isDone = !!progress[t.id];
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => onSelectTopic(t.id)}
+                      className={`w-full flex items-center gap-2 pl-5 pr-3 py-1.5 text-left transition-colors ${
+                        isActive
+                          ? 'bg-indigo-50 border-l-2 border-indigo-500'
+                          : 'border-l-2 border-transparent hover:bg-gray-50'
+                      }`}
+                    >
+                      {isDone
+                        ? <CheckCircle2 size={13} className="shrink-0 text-green-500" />
+                        : <Circle size={13} className={`shrink-0 ${isActive ? 'text-indigo-400' : 'text-gray-300'}`} />}
+                      <span className={`text-[12px] leading-tight ${isActive ? 'font-semibold text-indigo-700' : 'text-gray-600'}`}>
+                        {t.title}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
-              <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden mb-3">
-                <div className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${stats.pct}%`, background: 'linear-gradient(90deg,#4F46E5,#7C3AED)' }} />
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { label: 'Topics', value: stats.total, color: '#111827' },
-                  { label: 'Completed', value: stats.done, color: '#059669' },
-                  { label: 'Remaining', value: stats.total - stats.done, color: '#4F46E5' },
-                ].map(({ label, value, color }) => (
-                  <div key={label} className="text-center py-1.5 rounded-lg bg-gray-50">
-                    <p className="text-base font-bold" style={{ color }}>{value}</p>
-                    <p className="text-[10px] text-gray-400 font-medium mt-0.5">{label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
           </div>
-        </div>
+        );
+      })}
 
-        {/* ── Search + filter ───────────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-3 flex flex-col sm:flex-row gap-2 sm:items-center">
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder="Search topics or questions, e.g. Bitly, Kafka, sharding, WhatsApp…"
-              className="w-full pl-9 pr-3 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 bg-gray-50 border border-gray-200 focus:border-indigo-300 focus:bg-white rounded-xl outline-none transition-colors"
-            />
-          </div>
-          <div className="flex items-center gap-1.5 overflow-x-auto">
-            {(['all', 'core', 'pattern', 'deepdive', 'question'] as const).map(f => {
-              const active = filter === f;
-              const label =
-                f === 'all'      ? 'All' :
-                f === 'question' ? 'Questions' :
-                CATEGORY_META[f].label;
+      {/* Question Breakdowns */}
+      <div>
+        <button
+          onClick={() => toggle('questions')}
+          className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-gray-50 transition-colors"
+        >
+          <span className="text-xs font-semibold text-gray-700">Question Breakdowns</span>
+          <ChevronDown size={12} className={`text-gray-400 transition-transform duration-200 ${open.questions ? '' : '-rotate-90'}`} />
+        </button>
+
+        {open.questions && (
+          <div className="pb-1">
+            {QUESTIONS.map(q => {
+              const isActive = activeQId === q.id;
+              const isDone = !!progress[q.id];
               return (
                 <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap transition-all ${
-                    active
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  key={q.id}
+                  onClick={() => onSelectQuestion(q.id)}
+                  className={`w-full flex items-center gap-2 pl-5 pr-3 py-1.5 text-left transition-colors ${
+                    isActive
+                      ? 'bg-amber-50 border-l-2 border-amber-500'
+                      : 'border-l-2 border-transparent hover:bg-gray-50'
                   }`}
                 >
-                  {label}
+                  {isDone
+                    ? <CheckCircle2 size={13} className="shrink-0 text-green-500" />
+                    : <Circle size={13} className={`shrink-0 ${isActive ? 'text-amber-400' : 'text-gray-300'}`} />}
+                  <span className={`text-[12px] leading-tight ${isActive ? 'font-semibold text-amber-700' : 'text-gray-600'}`}>
+                    {q.title}
+                  </span>
                 </button>
               );
             })}
           </div>
-        </div>
-
-        {/* ── AI Feature highlights ─────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-            <div className="flex items-center gap-2.5 mb-2">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                style={{ background: '#EEF2FF' }}>
-                <BookOpen size={14} style={{ color: '#4F46E5' }} />
-              </div>
-              <span className="text-xs font-semibold text-gray-800">Deep AI Explanations</span>
-            </div>
-            <p className="text-xs text-gray-500 leading-relaxed">
-              All 25 topics include structured breakdowns with code examples, trade-off analyses, and comparison tables.
-            </p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-            <div className="flex items-center gap-2.5 mb-2">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                style={{ background: '#F5F3FF' }}>
-                <Sparkles size={14} style={{ color: '#7C3AED' }} />
-              </div>
-              <span className="text-xs font-semibold text-gray-800">AI Mock Practice</span>
-            </div>
-            <p className="text-xs text-gray-500 leading-relaxed">
-              Practice system design with an AI interviewer. Get real-time scoring and feedback on your architecture choices.
-            </p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-            <div className="flex items-center gap-2.5 mb-2">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                style={{ background: '#ECFDF5' }}>
-                <ListChecks size={14} style={{ color: '#059669' }} />
-              </div>
-              <span className="text-xs font-semibold text-gray-800">Track Your Progress</span>
-            </div>
-            <p className="text-xs text-gray-500 leading-relaxed">
-              Mark topics as complete and follow a structured path from core fundamentals to deep technology dives.
-            </p>
-          </div>
-        </div>
-
-        {/* ── Concept sections ──────────────────────────────────────── */}
-        {showTopics && (['core', 'pattern', 'deepdive'] as TopicCategory[]).map(cat => {
-          const items = grouped[cat];
-          if (items.length === 0) return null;
-          const meta = CATEGORY_META[cat];
-          const Icon = CATEGORY_ICON[cat];
-
-          return (
-            <section key={cat} className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: `${meta.accent}15`, border: `1px solid ${meta.accent}30` }}>
-                  <Icon size={17} style={{ color: meta.accent }} />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-gray-900 leading-tight">{meta.label}</h2>
-                  <p className="text-xs text-gray-500">{meta.description}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {items.map(t => (
-                  <TopicCard
-                    key={t.id}
-                    topic={t}
-                    done={!!progress[t.id]}
-                    onOpen={() => setActiveId(t.id)}
-                    onToggleDone={() => toggleDone(t.id)}
-                  />
-                ))}
-              </div>
-            </section>
-          );
-        })}
-
-        {/* ── Question Breakdowns ───────────────────────────────────── */}
-        {showQuestions && visibleQuestions.length > 0 && (
-          <section className="space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: '#F59E0B15', border: '1px solid #F59E0B30' }}>
-                <MessageSquareQuote size={17} style={{ color: '#D97706' }} />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-gray-900 leading-tight">Question Breakdowns</h2>
-                <p className="text-xs text-gray-500">Walked-through system design questions with animated diagrams and a quirky tone.</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {visibleQuestions.map(q => (
-                <QuestionCard
-                  key={q.id}
-                  question={q}
-                  done={!!progress[q.id]}
-                  onOpen={() => setActiveQId(q.id)}
-                  onToggleDone={() => toggleDone(q.id)}
-                />
-              ))}
-            </div>
-          </section>
         )}
-
-        {visible.length === 0 && visibleQuestions.length === 0 && (
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-10 text-center">
-            <p className="text-sm text-gray-500">No topics match "{query}".</p>
-            <button onClick={() => { setQuery(''); setFilter('all'); }}
-              className="text-xs text-indigo-600 font-semibold mt-3 hover:underline">
-              Clear filters
-            </button>
-          </div>
-        )}
-
-        <p className="text-center text-[11px] text-gray-400 pt-2">
-          AI-powered system design mastery · 25 topics · progress saved locally
-        </p>
       </div>
-
-    </div>
+    </aside>
   );
 }
 
