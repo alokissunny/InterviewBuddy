@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Mic, Search, Users, Zap, LogOut, ChevronDown,
+  Mic, Search, Users, LogOut, ChevronDown,
   UserCircle2, ClipboardList, BookOpen, ArrowLeft,
 } from 'lucide-react';
 import { CandidateProfile } from './types';
@@ -57,14 +57,8 @@ function AppHeader({ profile, activeTab, onTabChange, onChangeProfile, onViewPro
     <header className="flex items-center shrink-0 h-14 px-4 sm:px-6 gap-4"
       style={{ background: 'white', borderBottom: '1px solid #E5E7EB', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
       {/* Logo */}
-      <div className="flex items-center gap-2.5 shrink-0">
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)', boxShadow: '0 0 12px rgba(79,70,229,0.3)' }}>
-          <Zap size={16} className="text-white" />
-        </div>
-        <span className="text-gray-900 font-bold text-base tracking-tight">
-          JobCracker<span className="text-indigo-600 font-normal text-sm">.in</span>
-        </span>
+      <div className="flex items-center shrink-0">
+        <img src="/logo.svg" alt="JobCracker" className="h-9 w-auto" />
       </div>
 
       {/* Desktop nav tabs */}
@@ -371,15 +365,9 @@ function BrowseLearnShell({ onBack }: { onBack: () => void }) {
           <ArrowLeft size={13} /> Home
         </button>
 
-        <div className="flex items-center gap-2.5 ml-1">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)', boxShadow: '0 0 12px rgba(79,70,229,0.3)' }}>
-            <Zap size={16} className="text-white" />
-          </div>
-          <span className="text-gray-900 font-bold text-base tracking-tight">
-            JobCracker<span className="text-indigo-600 font-normal text-sm">.in</span>
-          </span>
-          <span className="hidden sm:inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 ml-1">
+        <div className="flex items-center gap-2 ml-1">
+          <img src="/logo.svg" alt="JobCracker" className="h-8 w-auto" />
+          <span className="hidden sm:inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
             Learn · Free
           </span>
         </div>

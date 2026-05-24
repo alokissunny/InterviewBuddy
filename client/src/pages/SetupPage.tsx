@@ -101,10 +101,9 @@ function Nav({ onBrowseLearn }: { onBrowseLearn?: () => void }) {
       fontSize: 14, fontFamily: T.sans,
     }}>
       {/* Logo */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 600, letterSpacing: '-0.02em', fontSize: 18 }}>
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: T.accent, display: 'inline-block', flexShrink: 0 }} />
-        JobCracker
-      </div>
+      <a href="/" style={{ display: 'inline-flex', textDecoration: 'none' }}>
+        <img src="/logo.svg" alt="JobCracker" style={{ height: 48, width: 'auto', display: 'block' }} />
+      </a>
 
       {/* Nav links */}
       <div className="jc-nav-links" style={{ display: 'flex', gap: 28, color: T.inkDim, fontSize: 14, alignItems: 'center' }}>
@@ -579,9 +578,8 @@ function Footer({ onBrowseLearn }: { onBrowseLearn?: () => void }) {
     <footer className="jc-foot" style={{ borderTop: `1px solid ${T.line}`, padding: '48px 32px 40px' }}>
       <div className="jc-foot-grid" style={{ maxWidth: 1180, margin: '0 auto', display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 48 }}>
         <div className="jc-foot-brand">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 600, letterSpacing: '-0.02em', fontSize: 18, fontFamily: T.sans, marginBottom: 14 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: T.accent, display: 'inline-block' }} />
-            JobCracker
+          <div style={{ marginBottom: 14 }}>
+            <img src="/logo.svg" alt="JobCracker" style={{ height: 56, width: 'auto', display: 'block' }} />
           </div>
           <p style={{ color: T.inkDim, lineHeight: 1.55, fontFamily: T.sans, fontSize: 13.5, maxWidth: '36ch' }}>
             A quiet co-pilot for the whole job hunt — learning, practice, applications, outreach, and the interview itself.
@@ -678,18 +676,6 @@ export function LoginPage({ linkedinError, onClearLinkedinError, onBrowseLearn }
                   Browse the learning library <span>→</span>
                 </button>
               )}
-              <button
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8,
-                  padding: '10px 18px', borderRadius: 999,
-                  color: T.ink, background: 'transparent',
-                  border: `1px solid ${T.line2}`,
-                  fontSize: 14, fontWeight: 500, fontFamily: T.sans,
-                  whiteSpace: 'nowrap', cursor: 'pointer',
-                }}
-              >
-                Watch the 90-second tour
-              </button>
             </div>
 
             {/* Stat strip */}
@@ -794,10 +780,7 @@ export function CVOnboardingPage({ profile, onComplete }: CVOnboardingPageProps)
 
       <div style={{ position: 'relative', zIndex: 2, width: '100%', maxWidth: 640, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 32 }}>
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 600, fontFamily: T.sans, fontSize: 18, letterSpacing: '-0.02em' }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: T.accent, display: 'inline-block' }} />
-          JobCracker
-        </div>
+        <img src="/logo.svg" alt="JobCracker" style={{ height: 52, width: 'auto', display: 'block' }} />
 
         {/* Welcome */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
