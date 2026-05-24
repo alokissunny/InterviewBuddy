@@ -32,6 +32,19 @@ export interface ArchDiagram {
 
 export type QDifficulty = 'easy' | 'medium' | 'hard';
 
+export interface ApiDef {
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'WS';
+  endpoint: string;
+  description: string;
+  request?: string;
+  response?: string;
+}
+
+export interface DataEntity {
+  name: string;
+  fields: string[];
+}
+
 export interface SystemDesignQuestion {
   id: string;
   title: string;
@@ -53,6 +66,10 @@ export interface SystemDesignQuestion {
   tradeoffs: string[];
   /** A one-line "if you only remember one thing…" closer */
   punchline: string;
+  /** Core API surface the candidate should define */
+  coreApis?: ApiDef[];
+  /** Key data entities and their fields */
+  dataModel?: DataEntity[];
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -65,20 +82,21 @@ export const QUESTIONS: SystemDesignQuestion[] = [
     id: 'bitly',
     title: 'Bitly / URL Shortener',
     emoji: '🔗',
-    tagline: 'Take a URL the size of a CVS receipt, return one the size of a tweet.',
+    tagline: 'A nickname for a long URL — like a contact name for a 200-character address.',
     prompt: 'Design a URL shortening service like Bitly or TinyURL.',
     difficulty: 'easy',
     functional: [
-      'Shorten a long URL → return a short code',
-      'Redirect short code → original URL',
-      '(Bonus) Custom aliases',
-      '(Bonus) Click analytics',
+      'Shorten a long URL → return a unique short code',
+      'Redirect any short URL back to its original URL',
+      'Track click analytics: count, country, device, browser',
+      'Support optional custom aliases (e.g. bit.ly/my-promo)',
+      'Support optional expiry date for short links',
     ],
     nonFunctional: [
-      'Redirect latency < 100 ms (p99)',
-      '100:1 read-to-write ratio',
-      '99.99% availability — broken short links are a meme',
-      'URLs are immutable once created',
+      'Redirects must be very fast — under 100 ms p99 from the backend',
+      'Reads vastly outnumber writes — 100:1 read-to-write ratio',
+      '99.99% availability — a broken short link is a dead end for users',
+      'Short codes must never collide — two URLs must never share a code',
     ],
     capacity: [
       { label: 'New URLs / day', value: '100M' },
@@ -88,45 +106,100 @@ export const QUESTIONS: SystemDesignQuestion[] = [
     ],
     diagram: {
       layers: [
-        [{ id: 'user', label: 'User', kind: 'client' }],
-        [{ id: 'cdn', label: 'CDN / Edge', kind: 'cdn' }],
+        [{ id: 'user', label: 'User / Browser', kind: 'client' }],
+        [{ id: 'cdn', label: 'CDN / Edge Cache', kind: 'cdn' }],
         [{ id: 'api', label: 'API Gateway', kind: 'api' }],
         [
           { id: 'shorten', label: 'Shorten Svc', kind: 'service' },
           { id: 'redirect', label: 'Redirect Svc', kind: 'service' },
         ],
         [
-          { id: 'cache', label: 'Redis', kind: 'cache', sub: 'hot codes' },
-          { id: 'db', label: 'KV Store', kind: 'db', sub: 'code → url' },
+          { id: 'cache', label: 'Redis Cache', kind: 'cache', sub: 'hot short codes' },
+          { id: 'db', label: 'URL DB (KV)', kind: 'db', sub: 'shortCode → longUrl' },
+        ],
+        [
+          { id: 'queue', label: 'Analytics Queue', kind: 'queue', sub: 'async clicks' },
+          { id: 'analytics', label: 'Analytics DB', kind: 'db', sub: 'clicks, country, device' },
         ],
       ],
       edges: [
         { from: 'user', to: 'cdn' },
-        { from: 'cdn', to: 'api', label: 'miss' },
-        { from: 'api', to: 'shorten', label: 'POST' },
-        { from: 'api', to: 'redirect', label: 'GET' },
-        { from: 'shorten', to: 'db', label: 'write' },
-        { from: 'redirect', to: 'cache', label: 'lookup' },
-        { from: 'cache', to: 'db', dashed: true, label: 'miss' },
+        { from: 'cdn', to: 'api', label: 'cache miss' },
+        { from: 'api', to: 'shorten', label: 'POST /shorten' },
+        { from: 'api', to: 'redirect', label: 'GET /{code}' },
+        { from: 'shorten', to: 'db', label: 'write mapping' },
+        { from: 'redirect', to: 'cache', label: 'lookup code' },
+        { from: 'cache', to: 'db', dashed: true, label: 'cache miss' },
+        { from: 'redirect', to: 'queue', dashed: true, label: 'fire & forget' },
+        { from: 'queue', to: 'analytics', label: 'batch write' },
       ],
     },
     walkthrough: [
-      { title: '1. Pick your short code generator', body: 'Counter-based (base62 of an auto-increment id) is collision-free and clean. Hash-based (MD5(url)[:7]) is stateless but you handle collisions. Pre-generated pool is fastest at write time.' },
-      { title: '2. Store it small', body: 'Schema is essentially (short_code PK, long_url, created_at, owner_id). A KV store like DynamoDB or even Postgres with a unique index works perfectly.' },
-      { title: '3. Read path = cache everything', body: 'Redirects are 10B/day → cache hot codes in Redis with a fat TTL. Cache hit ratio of 95%+ is normal. Redis can do this on one node.' },
-      { title: '4. Redirect with HTTP 301 vs 302', body: '301 (permanent) lets browsers and CDNs cache the redirect forever — fastest, but you lose analytics. 302 (temporary) means every click hits you. Pick 302 if you want clicks.' },
+      {
+        title: '1. Clarify what you are building',
+        body: 'Start by confirming the two core flows: (1) write — a user submits a long URL and gets a short one back; (2) read — a visitor opens a short URL and gets redirected. Everything else (analytics, custom aliases, expiry) is a bonus feature you can layer on.',
+      },
+      {
+        title: '2. Generate the short code — use Counter + Base62',
+        body: 'The safest approach is a global auto-increment counter converted to Base62 (digits 0–9, a–z, A–Z). Counter 1 → "b", counter 1,257,894 → "5Ds9". This is collision-free and easy to explain. Alternative: generate a random 6-8 character string and retry on collision — works fine but harder to guarantee uniqueness at scale.',
+      },
+      {
+        title: '3. Define the data model — keep it simple',
+        body: 'You only need two tables: URLMapping (shortCode PK, longUrl, userId, createdAt, expiresAt, isActive) and ClickEvent (shortCode, timestamp, country, device, browser, referrer). The mapping table is tiny — even 100M URLs at ~200 bytes each is only ~20 GB.',
+      },
+      {
+        title: '4. Build the redirect flow — cache first, analytics async',
+        body: 'When a browser opens bit.ly/aB91xZ: (1) check Redis for the code → if found, redirect immediately; (2) if not found, query the DB, warm the cache, then redirect; (3) after redirecting, fire a click event to the analytics queue asynchronously. The user should never wait for analytics to complete.',
+      },
+      {
+        title: '5. Use HTTP 302 for redirects (not 301)',
+        body: 'HTTP 301 means "permanent" — browsers and CDNs cache it forever, which is fast but kills your analytics because clicks never reach you again. HTTP 302 means "temporary" — every click hits your server, so you capture analytics. Use 302 unless you explicitly want to give up click tracking.',
+      },
+      {
+        title: '6. Scale the read path with CDN + Redis',
+        body: 'Reads are 100× more common than writes. Put Redis in front of the DB for hot codes (95%+ cache hit rate is typical). For the most popular links, push the redirect rule to the CDN edge so it never even reaches your servers. Shard the DB by shortCode hash if you need horizontal scale.',
+      },
     ],
     deepDives: [
-      { title: 'Counter without a single point of failure', body: 'Use a distributed ID service (Snowflake, or a Zookeeper-coordinated range allocator). Each app server grabs a 10k-id batch — survives crashes, no bottleneck.' },
-      { title: 'Custom aliases without races', body: 'INSERT ... ON CONFLICT DO NOTHING and check rowcount. Race-safe in one round trip.' },
-      { title: 'Analytics without slowing redirects', body: 'Async: redirect first, fire-and-forget event to Kafka, aggregate offline. Never make the user wait for a write.' },
+      {
+        title: 'Distributed counter without a single point of failure',
+        body: 'A single counter DB becomes a bottleneck. Instead use range allocation: a coordinator (Zookeeper or a simple DB row with atomic CAS) hands each app server a batch of 10,000 IDs. The server uses them locally until exhausted, then requests the next batch. No network hop per URL creation, no lock contention.',
+      },
+      {
+        title: 'Custom aliases — preventing race conditions',
+        body: 'Two users might try to register "bit.ly/sale" at the same time. Use a DB-level unique constraint and INSERT ... ON CONFLICT DO NOTHING. Check the rowcount — if 0 rows were inserted, the alias is already taken. This is race-safe in a single round trip without any application-level locking.',
+      },
+      {
+        title: 'Analytics queue — why async matters',
+        body: 'Recording a click (country, device, browser) involves a DB write. If you do it synchronously, every redirect waits for an analytics write — your p99 latency doubles. Instead: redirect immediately, drop a small event onto a Kafka topic, and let background workers batch-write to the analytics DB. The redirect is decoupled from the analytics write.',
+      },
+      {
+        title: 'Failure handling — what breaks and what should not',
+        body: 'Analytics queue down? Redirect still works — analytics are best-effort. Cache down? Fall back to the DB — slower but functional. DB down? Cached popular links still redirect — only cold cache misses fail. Design each component so failures degrade gracefully rather than cascade. Use idempotency keys on the /shorten API to prevent duplicate short codes if the client retries.',
+      },
+      {
+        title: '301 vs 302 — the hidden analytics trade-off',
+        body: '301 Permanent: browsers cache the redirect forever. Zero repeat traffic to your servers — very fast, very cheap, but you permanently lose click analytics for returning visitors. 302 Temporary: every click hits your servers. You get full analytics but at higher infrastructure cost. Most real URL shorteners use 302 for analytics-tracked links and 301 only for deprecated or migrated links.',
+      },
     ],
     tradeoffs: [
-      'Counter ids leak business volume — adversarial folks can iterate. Hash-of-counter or base62-shuffle fixes it.',
-      '301 = fewer requests but no per-click analytics. Pick your poison.',
-      'Caching makes you blazing fast and almost stateless — your DB becomes a cold-storage afterthought.',
+      'Counter IDs are sequential — an attacker can enumerate all short URLs by incrementing the code. Mitigate by base62-encoding a shuffled/hashed counter value.',
+      '301 = no analytics for repeat visitors, but nearly zero infrastructure cost on the redirect path. 302 = full analytics but every click hits your servers.',
+      'Caching most redirects in Redis makes the system nearly stateless at read time — the DB becomes a cold backup, not a hot path.',
+      'Storing analytics synchronously is simpler to build but blocks redirects. An async queue adds complexity but keeps redirects under 10 ms regardless of analytics load.',
+      'Custom aliases need a uniqueness check — this is the one place where a distributed system needs a single source of truth (your DB unique index).',
     ],
-    punchline: '99% of this system is a cache in front of a KV table. The hard part is keeping ids unique without a global lock.',
+    punchline: 'A URL shortener is just a contact book: short name maps to long address. The engineering challenge is making that lookup instant for billions of visitors without ever returning the wrong address.',
+    coreApis: [
+      { method: 'POST', endpoint: '/shorten', description: 'Create a short URL', request: '{ longUrl, customAlias?, expiresAt? }', response: '{ shortUrl }' },
+      { method: 'GET',  endpoint: '/{shortCode}', description: 'Redirect to the original URL', response: 'HTTP 302 redirect to longUrl' },
+      { method: 'GET',  endpoint: '/analytics/{shortCode}', description: 'Click stats for a short URL', response: '{ totalClicks, byCountry, byDevice, byBrowser }' },
+      { method: 'DELETE', endpoint: '/links/{shortCode}', description: 'Deactivate a short link', response: '{ ok }' },
+    ],
+    dataModel: [
+      { name: 'URLMapping', fields: ['shortCode: string PK', 'longUrl: string', 'userId: string', 'createdAt: timestamp', 'expiresAt: timestamp?', 'isActive: boolean'] },
+      { name: 'ClickEvent', fields: ['shortCode: string FK', 'timestamp: timestamp', 'country: string', 'device: string', 'browser: string', 'referrer: string'] },
+    ],
   },
 
   // 2
@@ -202,6 +275,17 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Per-user encryption keys defeat dedup. Pick "convenience or zero-knowledge", not both.',
     ],
     punchline: 'Don\'t sync files — sync chunks. Files are just lists of chunk hashes, and S3 already deduplicates the world.',
+    coreApis: [
+      { method: 'POST',  endpoint: '/files/upload', description: 'Upload a file (multipart)', request: 'multipart/form-data + metadata', response: '{ fileId, version }' },
+      { method: 'GET',   endpoint: '/files/{fileId}', description: 'Get file metadata + download URL', response: '{ metadata, downloadUrl }' },
+      { method: 'GET',   endpoint: '/sync/changes?since={version}', description: 'Poll for changes since last sync', response: '{ changes[], latestVersion }' },
+      { method: 'POST',  endpoint: '/files/{fileId}/share', description: 'Share a file with another user', request: '{ userId, permission }', response: '{ shareId }' },
+    ],
+    dataModel: [
+      { name: 'FileMetadata', fields: ['fileId: uuid PK', 'ownerId: string', 'path: string', 'currentVersion: int', 'size: long', 'createdAt: timestamp'] },
+      { name: 'FileVersion', fields: ['fileId: uuid FK', 'versionId: int PK', 'chunkIds: string[]', 'createdAt: timestamp', 'createdBy: string'] },
+      { name: 'Chunk', fields: ['chunkId: string PK (content hash)', 'size: int', 'storageKey: string'] },
+    ],
   },
 
   // 3
@@ -279,6 +363,17 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Strong consistency on driver acceptance: critical. Eventual on location: totally fine.',
     ],
     punchline: 'Geospatial indexes + a queue of drivers + WebSocket fanout. Everything else is UI on top.',
+    coreApis: [
+      { method: 'POST',  endpoint: '/orders', description: 'Place an order', request: '{ storeId, items[], deliveryAddress }', response: '{ orderId, status }' },
+      { method: 'GET',   endpoint: '/orders/{orderId}', description: 'Get order status and details', response: '{ order, driverLocation? }' },
+      { method: 'PATCH', endpoint: '/orders/{orderId}/status', description: 'Update order status (store/driver)', request: '{ status }', response: '{ ok }' },
+      { method: 'GET',   endpoint: '/drivers/nearby?lat=&lng=', description: 'Find available drivers near a point', response: '{ drivers[] }' },
+    ],
+    dataModel: [
+      { name: 'Order', fields: ['orderId: uuid PK', 'customerId: string', 'storeId: string', 'driverId: string?', 'status: enum', 'totalAmount: decimal', 'createdAt: timestamp'] },
+      { name: 'OrderItem', fields: ['orderId: uuid FK', 'itemId: string', 'quantity: int', 'price: decimal'] },
+      { name: 'DriverLocation', fields: ['driverId: string PK', 'lat: float', 'lng: float', 'status: enum', 'updatedAt: timestamp'] },
+    ],
   },
 
   // 4
@@ -349,6 +444,17 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Strong consistency required — this is the canonical "no eventual consistency allowed" system.',
     ],
     punchline: 'The hard part isn\'t the DB. It\'s admitting 1M people through a turnstile without anyone double-clicking themselves into two seats.',
+    coreApis: [
+      { method: 'GET',  endpoint: '/events/{eventId}/seats', description: 'Get seat map with availability', response: '{ seats[], sectionMap }' },
+      { method: 'POST', endpoint: '/seats/hold', description: 'Temporarily hold a seat (5–10 min)', request: '{ seatId, eventId }', response: '{ holdId, expiresAt }' },
+      { method: 'POST', endpoint: '/bookings', description: 'Confirm purchase and issue ticket', request: '{ holdId, paymentToken }', response: '{ ticketId, qrCode }' },
+      { method: 'DELETE', endpoint: '/seats/hold/{holdId}', description: 'Release a seat hold early', response: '{ ok }' },
+    ],
+    dataModel: [
+      { name: 'Event', fields: ['eventId: uuid PK', 'name: string', 'venueId: string', 'startTime: timestamp'] },
+      { name: 'Seat', fields: ['seatId: uuid PK', 'eventId: uuid FK', 'section: string', 'row: string', 'number: int', 'status: enum (available|held|booked)', 'holdExpiresAt: timestamp?'] },
+      { name: 'Ticket', fields: ['ticketId: uuid PK', 'userId: string', 'eventId: uuid FK', 'seatId: uuid FK', 'qrCode: string', 'issuedAt: timestamp'] },
+    ],
   },
 
   // 5
@@ -420,6 +526,17 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Eventually consistent — if your friend\'s post takes 3s to appear, no one dies.',
     ],
     punchline: 'A news feed is a pre-computed ranked list per user. The interesting question is who pushes vs pulls.',
+    coreApis: [
+      { method: 'POST', endpoint: '/posts', description: 'Create a new post', request: '{ content, mediaIds[]?, visibility }', response: '{ postId }' },
+      { method: 'GET',  endpoint: '/feed?cursor=', description: 'Fetch paginated ranked feed', response: '{ posts[], nextCursor }' },
+      { method: 'POST', endpoint: '/posts/{postId}/like', description: 'Like a post', response: '{ ok }' },
+      { method: 'GET',  endpoint: '/posts/{postId}/comments?cursor=', description: 'Fetch comments', response: '{ comments[], nextCursor }' },
+    ],
+    dataModel: [
+      { name: 'Post', fields: ['postId: uuid PK', 'authorId: string', 'content: text', 'mediaIds: string[]', 'createdAt: timestamp', 'likeCount: int'] },
+      { name: 'FeedItem', fields: ['userId: string PK', 'postId: uuid PK', 'score: float', 'insertedAt: timestamp'] },
+      { name: 'Follow', fields: ['followerId: string PK', 'followeeId: string PK', 'createdAt: timestamp'] },
+    ],
   },
 
   // 6
@@ -494,6 +611,17 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Strong consistency on matches (don\'t miss one). Eventual on stack ordering.',
     ],
     punchline: 'It\'s a geo-spatial search + a left-anti-join on prior swipes + an instant reciprocity check.',
+    coreApis: [
+      { method: 'GET',  endpoint: '/discover?limit=20', description: 'Get next card stack (geo-filtered, unswiped)', response: '{ profiles[] }' },
+      { method: 'POST', endpoint: '/swipe', description: 'Record a swipe decision', request: '{ targetId, direction: like|pass }', response: '{ matched: boolean }' },
+      { method: 'GET',  endpoint: '/matches', description: 'List current matches', response: '{ matches[] }' },
+      { method: 'PUT',  endpoint: '/location', description: 'Update current GPS position', request: '{ lat, lng }', response: '{ ok }' },
+    ],
+    dataModel: [
+      { name: 'Profile', fields: ['userId: uuid PK', 'name: string', 'age: int', 'bio: text', 'photoIds: string[]', 'lat: float', 'lng: float', 'preferences: json'] },
+      { name: 'Swipe', fields: ['swiperId: string PK', 'targetId: string PK', 'direction: enum (like|pass)', 'timestamp: timestamp'] },
+      { name: 'Match', fields: ['matchId: uuid PK', 'userA: string', 'userB: string', 'createdAt: timestamp'] },
+    ],
   },
 
   // 7
@@ -564,6 +692,17 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Cache compiled binaries per language version to cut launch latency.',
     ],
     punchline: 'It\'s a job queue feeding microVMs with a leaderboard side-effect. The hard part is the sandbox.',
+    coreApis: [
+      { method: 'GET',  endpoint: '/problems/{problemId}', description: 'Fetch problem statement and examples', response: '{ title, description, examples[], constraints }' },
+      { method: 'POST', endpoint: '/submissions', description: 'Submit code for judging', request: '{ problemId, language, code }', response: '{ submissionId, status: pending }' },
+      { method: 'GET',  endpoint: '/submissions/{submissionId}', description: 'Poll verdict', response: '{ status, verdict, runtime, memory, failingCase? }' },
+      { method: 'GET',  endpoint: '/contests/{contestId}/leaderboard', description: 'Contest rankings', response: '{ entries[] }' },
+    ],
+    dataModel: [
+      { name: 'Problem', fields: ['problemId: uuid PK', 'title: string', 'difficulty: enum', 'description: text', 'timeLimit: int (ms)', 'memoryLimit: int (MB)'] },
+      { name: 'Submission', fields: ['submissionId: uuid PK', 'userId: string', 'problemId: uuid FK', 'language: string', 'code: text', 'status: enum', 'runtime: int', 'memory: int'] },
+      { name: 'TestCase', fields: ['problemId: uuid FK', 'caseId: int PK', 'input: text', 'expectedOutput: text', 'isHidden: boolean'] },
+    ],
   },
 
   // 8
@@ -634,6 +773,17 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Per-recipient encryption multiplies group fan-out cost. Sender keys mitigate but add complexity.',
     ],
     punchline: 'A chat app is a per-recipient mailbox + a per-device WebSocket. The crypto is the spicy bit.',
+    coreApis: [
+      { method: 'WS',   endpoint: '/ws', description: 'Persistent connection — send/receive encrypted messages and presence updates', request: '{ type: message|ack|presence, payload }' },
+      { method: 'POST', endpoint: '/messages', description: 'Send a message (used as fallback / REST)', request: '{ recipientId, encryptedContent, mediaId? }', response: '{ messageId, sentAt }' },
+      { method: 'GET',  endpoint: '/messages/{conversationId}?before=', description: 'Fetch message history (pagination)', response: '{ messages[], hasMore }' },
+      { method: 'POST', endpoint: '/groups', description: 'Create a group chat', request: '{ name, memberIds[] }', response: '{ groupId }' },
+    ],
+    dataModel: [
+      { name: 'Message', fields: ['messageId: uuid PK', 'senderId: string', 'recipientId: string', 'encryptedContent: bytes', 'status: enum (sent|delivered|read)', 'timestamp: timestamp'] },
+      { name: 'Conversation', fields: ['conversationId: uuid PK', 'participantIds: string[]', 'lastMessageId: uuid', 'updatedAt: timestamp'] },
+      { name: 'PresenceRecord', fields: ['userId: string PK', 'status: enum (online|offline)', 'lastSeen: timestamp'] },
+    ],
   },
 
   // 9
@@ -691,6 +841,15 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Burst tolerance: token bucket lets users front-load — usually desirable.',
     ],
     punchline: 'Token bucket + Redis Lua script + sharded keys = 99% of every rate limiter you\'ll ever write.',
+    coreApis: [
+      { method: 'POST', endpoint: '/check', description: 'Check if a request is allowed (internal middleware call)', request: '{ key, limit, windowSeconds }', response: '{ allowed: boolean, remaining: int, resetAt: timestamp }' },
+      { method: 'GET',  endpoint: '/limits/{key}', description: 'Inspect current quota usage for a key', response: '{ used: int, limit: int, resetAt: timestamp }' },
+      { method: 'PUT',  endpoint: '/config/{key}', description: 'Update rate limit config for a key pattern', request: '{ limit, windowSeconds, algorithm }', response: '{ ok }' },
+    ],
+    dataModel: [
+      { name: 'RateLimitConfig', fields: ['keyPattern: string PK', 'algorithm: enum (token_bucket|sliding_window|fixed_window)', 'limit: int', 'windowSeconds: int'] },
+      { name: 'TokenBucket (Redis)', fields: ['key: string PK', 'tokens: float', 'lastRefillAt: timestamp'] },
+    ],
   },
 
   // 10
@@ -756,6 +915,15 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Sampling drops content. Necessary at scale.',
     ],
     punchline: 'Pub/sub + a WS gateway is enough. Everything past 10k/sec is sampling and ordering tricks.',
+    coreApis: [
+      { method: 'POST', endpoint: '/videos/{videoId}/comments', description: 'Post a comment on a live stream', request: '{ text }', response: '{ commentId, timestamp }' },
+      { method: 'GET',  endpoint: '/videos/{videoId}/comments?since=', description: 'Fetch recent comments (backfill for late joiners)', response: '{ comments[], nextCursor }' },
+      { method: 'WS',   endpoint: '/ws/videos/{videoId}', description: 'Subscribe to real-time comment stream for a video', request: 'subscribe event', response: 'comment events pushed' },
+    ],
+    dataModel: [
+      { name: 'Comment', fields: ['commentId: uuid PK', 'videoId: string FK', 'userId: string', 'text: string', 'timestamp: timestamp', 'status: enum (visible|hidden|deleted)'] },
+      { name: 'LiveSession', fields: ['videoId: string PK', 'isActive: boolean', 'viewerCount: int', 'startedAt: timestamp'] },
+    ],
   },
 
   // 11
@@ -826,6 +994,14 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Personalization vs raw relevance: tradeoff that the product team owns.',
     ],
     punchline: 'It\'s a sharded inverted index with a CDC firehose feeding it and a ranker on top.',
+    coreApis: [
+      { method: 'GET', endpoint: '/search/posts?q=&authorId=&from=&to=&visibility=', description: 'Full-text search posts with filters', response: '{ posts[], total, nextCursor }' },
+      { method: 'GET', endpoint: '/search/suggestions?q=', description: 'Autocomplete query suggestions', response: '{ suggestions[] }' },
+    ],
+    dataModel: [
+      { name: 'Post', fields: ['postId: uuid PK', 'authorId: string', 'content: text', 'visibility: enum', 'createdAt: timestamp'] },
+      { name: 'SearchDocument (ES)', fields: ['postId: uuid', 'terms: string[] (tokenized)', 'authorId: string', 'visibility: string', 'engagementScore: float', 'createdAt: timestamp'] },
+    ],
   },
 
   // 12
@@ -886,6 +1062,14 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Per-region segmentation explodes state — be deliberate about how many dimensions you cut.',
     ],
     punchline: 'It\'s a streaming heavy-hitters algorithm with a tiny Redis cache in front. Don\'t try to exact-count the internet.',
+    coreApis: [
+      { method: 'POST', endpoint: '/views', description: 'Ingest a view event', request: '{ videoId, userId, region, watchDuration }', response: '{ ok }' },
+      { method: 'GET',  endpoint: '/trending?window=1h&region=US&category=music&k=100', description: 'Get top-K videos in a time window', response: '{ videos[] with viewCount }' },
+    ],
+    dataModel: [
+      { name: 'ViewEvent', fields: ['videoId: string', 'userId: string', 'region: string', 'timestamp: timestamp', 'watchDuration: int'] },
+      { name: 'VideoCounter (stream state)', fields: ['videoId: string PK', 'window: string', 'region: string', 'approxViewCount: long (Count-Min Sketch)'] },
+    ],
   },
 
   // 13
@@ -965,6 +1149,16 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Pricing freshness vs stability: too reactive feels manipulative; too slow loses revenue.',
     ],
     punchline: 'It\'s a real-time geo index, a TTL-locked offer loop, and a WS fanout. The hard parts are pricing and fairness.',
+    coreApis: [
+      { method: 'POST', endpoint: '/rides/request', description: 'Rider requests a trip', request: '{ pickupLocation, dropLocation, rideType }', response: '{ rideId, estimatedWait, estimatedFare }' },
+      { method: 'PUT',  endpoint: '/drivers/location', description: 'Driver pings current GPS position', request: '{ lat, lng, status }', response: '{ ok }' },
+      { method: 'GET',  endpoint: '/rides/{rideId}', description: 'Get live ride status + driver position', response: '{ status, driverLocation, eta }' },
+      { method: 'POST', endpoint: '/rides/{rideId}/end', description: 'Complete the trip and trigger payment', response: '{ fare, receipt }' },
+    ],
+    dataModel: [
+      { name: 'Trip', fields: ['tripId: uuid PK', 'riderId: string', 'driverId: string?', 'pickupLat/Lng: float', 'dropLat/Lng: float', 'status: enum', 'fare: decimal', 'createdAt: timestamp'] },
+      { name: 'DriverLocation (Geo Index)', fields: ['driverId: string PK', 'lat: float', 'lng: float', 'status: enum (available|busy)', 'updatedAt: timestamp'] },
+    ],
   },
 
   // 14
@@ -1029,6 +1223,17 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Edge cache hit ratio is the single biggest cost lever.',
     ],
     punchline: 'It\'s an object store, a parallel transcoder, and the world\'s biggest CDN. Streaming is just a manifest of segment URLs.',
+    coreApis: [
+      { method: 'POST', endpoint: '/videos/upload', description: 'Initiate a resumable video upload', request: '{ title, description, tags[] }', response: '{ videoId, uploadUrl }' },
+      { method: 'GET',  endpoint: '/videos/{videoId}', description: 'Get video metadata and streaming URLs', response: '{ video, streamingUrls by resolution }' },
+      { method: 'GET',  endpoint: '/videos/{videoId}/manifest.m3u8', description: 'HLS adaptive bitrate manifest', response: 'HLS playlist' },
+      { method: 'GET',  endpoint: '/search?q=&filters=', description: 'Search videos by keyword', response: '{ videos[], nextCursor }' },
+    ],
+    dataModel: [
+      { name: 'Video', fields: ['videoId: uuid PK', 'ownerId: string', 'title: string', 'status: enum (processing|published|failed)', 'rawBlobKey: string', 'createdAt: timestamp'] },
+      { name: 'VideoRendition', fields: ['videoId: uuid FK', 'resolution: string PK (1080p)', 'codec: string', 'storagePath: string', 'durationSecs: int'] },
+      { name: 'ViewEvent', fields: ['videoId: uuid', 'userId: string', 'timestamp: timestamp', 'watchDuration: int'] },
+    ],
   },
 
   // 15
@@ -1099,6 +1304,15 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Recency vs completeness: pick which to optimize per use case.',
     ],
     punchline: 'A polite, distributed BFS over the internet with a bloom filter for memory.',
+    coreApis: [
+      { method: 'POST', endpoint: '/crawl/seed', description: 'Seed the crawler with starting URLs', request: '{ urls[], priority? }', response: '{ jobId }' },
+      { method: 'GET',  endpoint: '/crawl/status', description: 'Monitor crawler health and throughput', response: '{ urlsQueued, urlsCrawled, errorsToday }' },
+      { method: 'GET',  endpoint: '/pages?url=', description: 'Retrieve stored page content by URL', response: '{ html, metadata, fetchedAt }' },
+    ],
+    dataModel: [
+      { name: 'URLRecord', fields: ['normalizedUrl: string PK', 'status: enum (queued|fetched|failed)', 'lastCrawledAt: timestamp', 'contentHash: string', 'priority: float'] },
+      { name: 'PageContent', fields: ['url: string FK', 'html: text (compressed)', 'title: string', 'outboundLinks: string[]', 'fetchedAt: timestamp'] },
+    ],
   },
 
   // 16
@@ -1163,6 +1377,15 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Fraud detection is endless. Treat as separate, evolving system.',
     ],
     punchline: 'A signed click → Kafka → Flink with dedup state → OLAP. Exact, replayable, audit-friendly.',
+    coreApis: [
+      { method: 'POST', endpoint: '/clicks', description: 'Record an ad click event', request: '{ adId, campaignId, signedToken, userId?, region }', response: '{ ok }' },
+      { method: 'POST', endpoint: '/impressions', description: 'Record an ad impression', request: '{ adId, campaignId, userId?, region }', response: '{ ok }' },
+      { method: 'GET',  endpoint: '/ads/{adId}/metrics?window=1h&groupBy=country', description: 'Query aggregated metrics', response: '{ clicks, impressions, CTR, cost }' },
+    ],
+    dataModel: [
+      { name: 'ClickEvent', fields: ['eventId: uuid PK (for dedup)', 'adId: string', 'campaignId: string', 'userId: string?', 'timestamp: timestamp', 'region: string'] },
+      { name: 'Aggregate (OLAP)', fields: ['campaignId: string PK', 'hour: timestamp PK', 'region: string PK', 'device: string PK', 'clicks: long', 'impressions: long', 'cost: decimal'] },
+    ],
   },
 
   // 17
@@ -1231,6 +1454,15 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Crawl freshness vs politeness — partner feeds beat scraping for both.',
     ],
     punchline: 'It\'s a crawler + vector search clustering + a ranked feed. The product is the clustering quality.',
+    coreApis: [
+      { method: 'GET', endpoint: '/feed?category=tech&userId=', description: 'Get personalized news feed', response: '{ stories[], nextCursor }' },
+      { method: 'GET', endpoint: '/articles/{articleId}', description: 'Full article content', response: '{ title, body, source, publishedAt, relatedStoryId }' },
+      { method: 'GET', endpoint: '/stories/{storyId}', description: 'Get a clustered story with all related articles', response: '{ mainTitle, articles[], coverageCount }' },
+    ],
+    dataModel: [
+      { name: 'Article', fields: ['articleId: uuid PK', 'sourceId: string FK', 'title: string', 'url: string', 'text: text', 'publishedAt: timestamp', 'category: string', 'embeddingVector: float[]'] },
+      { name: 'StoryCluster', fields: ['clusterId: uuid PK', 'articleIds: uuid[]', 'mainTitle: string', 'score: float', 'updatedAt: timestamp'] },
+    ],
   },
 
   // 18
@@ -1301,6 +1533,16 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Star average inflation is real — review weighting is a perpetual tuning project.',
     ],
     punchline: 'Postgres is truth, ES is the index, photos live behind a CDN, and the moat is fake-review detection.',
+    coreApis: [
+      { method: 'GET',  endpoint: '/businesses/search?q=pizza&lat=&lng=&radius=5km&category=', description: 'Geo + text search for businesses', response: '{ businesses[], total }' },
+      { method: 'GET',  endpoint: '/businesses/{businessId}', description: 'Business detail with rating summary', response: '{ business, avgRating, reviewCount, photos[] }' },
+      { method: 'POST', endpoint: '/businesses/{businessId}/reviews', description: 'Submit a review', request: '{ rating: 1-5, text, photos[]? }', response: '{ reviewId }' },
+    ],
+    dataModel: [
+      { name: 'Business', fields: ['businessId: uuid PK', 'name: string', 'category: string', 'lat: float', 'lng: float', 'hours: json', 'avgRating: float', 'reviewCount: int'] },
+      { name: 'Review', fields: ['reviewId: uuid PK', 'businessId: uuid FK', 'userId: string', 'rating: int', 'text: text', 'status: enum (visible|filtered)', 'createdAt: timestamp'] },
+      { name: 'Photo', fields: ['photoId: uuid PK', 'businessId: uuid FK', 'userId: string', 'storageUrl: string', 'createdAt: timestamp'] },
+    ],
   },
 
   // 19
@@ -1369,6 +1611,16 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Async matching is slower than instant, but cheap and resilient.',
     ],
     punchline: 'An object store for tracks, a spatial index for segments, and a Redis ZSET per leaderboard.',
+    coreApis: [
+      { method: 'POST', endpoint: '/activities', description: 'Upload a completed activity', request: '{ gpxData, type, startTime, title }', response: '{ activityId, processingStatus }' },
+      { method: 'GET',  endpoint: '/activities/{activityId}', description: 'Fetch activity with computed stats and map', response: '{ activity, stats, segmentEfforts[], mapPolyline }' },
+      { method: 'GET',  endpoint: '/segments/{segmentId}/leaderboard?type=overall&gender=', description: 'Segment leaderboard', response: '{ entries[], userRank? }' },
+      { method: 'GET',  endpoint: '/feed?cursor=', description: 'Social feed of followed athletes activities', response: '{ activities[], nextCursor }' },
+    ],
+    dataModel: [
+      { name: 'Activity', fields: ['activityId: uuid PK', 'userId: string', 'type: enum', 'startTime: timestamp', 'distanceM: float', 'durationSecs: int', 'rawGpsBlobKey: string'] },
+      { name: 'SegmentEffort', fields: ['segmentId: string FK', 'activityId: uuid FK', 'userId: string', 'elapsedSecs: int', 'rank: int', 'achievedAt: timestamp'] },
+    ],
   },
 
   // 20
@@ -1434,6 +1686,16 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Settling at scale requires a robust scheduler — Temporal/Step Functions fit.',
     ],
     punchline: 'Auctions are stateful actors per item. Lock, append, broadcast, repeat — then settle on the clock.',
+    coreApis: [
+      { method: 'POST', endpoint: '/auctions', description: 'Create a new auction listing', request: '{ itemId, startPrice, reservePrice?, endTime }', response: '{ auctionId }' },
+      { method: 'POST', endpoint: '/auctions/{auctionId}/bids', description: 'Place a bid', request: '{ amount }', response: '{ bidId, isLeading: boolean, currentHigh }' },
+      { method: 'GET',  endpoint: '/auctions/{auctionId}', description: 'Get auction state with live high bid', response: '{ auction, highestBid, timeRemaining }' },
+      { method: 'WS',   endpoint: '/ws/auctions/{auctionId}', description: 'Subscribe to real-time bid updates', response: 'bid events pushed' },
+    ],
+    dataModel: [
+      { name: 'Auction', fields: ['auctionId: uuid PK', 'sellerId: string', 'itemId: string', 'startPrice: decimal', 'highestBid: decimal', 'winnerId: string?', 'status: enum', 'endTime: timestamp'] },
+      { name: 'Bid', fields: ['bidId: uuid PK', 'auctionId: uuid FK', 'bidderId: string', 'amount: decimal', 'createdAt: timestamp'] },
+    ],
   },
 
   // 21
@@ -1500,6 +1762,17 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Alert sensitivity is a UX dial, not a technical decision.',
     ],
     punchline: 'It\'s a smart scheduler, polite fetchers, an append-only price log, and a fan-out on threshold crossings.',
+    coreApis: [
+      { method: 'POST',   endpoint: '/watches', description: 'Start tracking a product URL', request: '{ productUrl, targetPrice, currency }', response: '{ watchId, productId }' },
+      { method: 'GET',    endpoint: '/watches', description: 'List user\'s watched products', response: '{ watches[] with currentPrice }' },
+      { method: 'DELETE', endpoint: '/watches/{watchId}', description: 'Stop tracking a product', response: '{ ok }' },
+      { method: 'GET',    endpoint: '/products/{productId}/prices?from=&to=', description: 'Historical price chart data', response: '{ priceHistory[] }' },
+    ],
+    dataModel: [
+      { name: 'TrackedProduct', fields: ['productId: uuid PK', 'url: string', 'site: string', 'name: string', 'currentPrice: decimal', 'currency: string', 'lastCheckedAt: timestamp'] },
+      { name: 'PriceHistory', fields: ['productId: uuid FK', 'price: decimal', 'currency: string', 'checkedAt: timestamp PK'] },
+      { name: 'Alert', fields: ['alertId: uuid PK', 'userId: string', 'productId: uuid FK', 'targetPrice: decimal', 'isActive: boolean'] },
+    ],
   },
 
   // 22
@@ -1571,6 +1844,18 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Strong consistency on the follow graph is worth it; eventual on counters.',
     ],
     punchline: 'A photo CDN with a fan-out feed engine and a follow graph. Filters are a client thing.',
+    coreApis: [
+      { method: 'POST', endpoint: '/posts', description: 'Upload a photo/video with caption', request: 'multipart (media + { caption, location?, hashtags[] })', response: '{ postId, mediaUrls }' },
+      { method: 'GET',  endpoint: '/feed?cursor=', description: 'Paginated ranked home feed', response: '{ posts[], nextCursor }' },
+      { method: 'POST', endpoint: '/posts/{postId}/likes', description: 'Like a post', response: '{ ok, likeCount }' },
+      { method: 'POST', endpoint: '/users/{userId}/follow', description: 'Follow a user', response: '{ ok, followState }' },
+    ],
+    dataModel: [
+      { name: 'User', fields: ['userId: uuid PK', 'username: string (unique)', 'profilePhotoUrl: string', 'followerCount: int', 'followingCount: int'] },
+      { name: 'Post', fields: ['postId: uuid PK', 'authorId: uuid FK', 'caption: text', 'mediaIds: string[]', 'likeCount: int', 'createdAt: timestamp'] },
+      { name: 'Follow', fields: ['followerId: uuid PK', 'followeeId: uuid PK', 'createdAt: timestamp'] },
+      { name: 'Like', fields: ['postId: uuid PK', 'userId: uuid PK', 'createdAt: timestamp'] },
+    ],
   },
 
   // 23
@@ -1646,6 +1931,18 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Real-time risk checks add latency to order path but are non-negotiable.',
     ],
     punchline: 'Streams of quotes + a strict order pipeline + a double-entry ledger. The regulator is in the room.',
+    coreApis: [
+      { method: 'GET',  endpoint: '/quotes/{symbol}', description: 'Latest price quote for a symbol', response: '{ price, change, changePercent, volume, updatedAt }' },
+      { method: 'WS',   endpoint: '/ws/quotes', description: 'Subscribe to real-time tick stream for watched symbols', request: '{ symbols[] }', response: 'tick events pushed' },
+      { method: 'POST', endpoint: '/orders', description: 'Place a buy/sell order', request: '{ symbol, side, quantity, orderType, limitPrice? }', response: '{ orderId, status: pending }' },
+      { method: 'GET',  endpoint: '/portfolio', description: 'User portfolio snapshot', response: '{ holdings[], cashBalance, totalValue, dayGainLoss }' },
+    ],
+    dataModel: [
+      { name: 'Account', fields: ['accountId: uuid PK', 'userId: string', 'cashBalance: decimal', 'status: enum', 'createdAt: timestamp'] },
+      { name: 'Order', fields: ['orderId: uuid PK', 'accountId: uuid FK', 'symbol: string', 'side: enum (buy|sell)', 'quantity: decimal', 'orderType: enum', 'status: enum', 'filledAt: timestamp?'] },
+      { name: 'Holding', fields: ['accountId: uuid FK', 'symbol: string PK', 'quantity: decimal', 'avgCostBasis: decimal'] },
+      { name: 'LedgerEntry', fields: ['entryId: uuid PK', 'accountId: uuid FK', 'type: string', 'amount: decimal', 'debit/credit: enum', 'relatedOrderId: uuid?', 'timestamp: timestamp'] },
+    ],
   },
 
   // 24
@@ -1711,6 +2008,17 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Per-doc single-writer is great for consistency, painful for scaling celebrity docs.',
     ],
     punchline: 'A doc is an op log with snapshots. The whole game is "what happens when two ops collide?"',
+    coreApis: [
+      { method: 'POST', endpoint: '/documents', description: 'Create a new document', request: '{ title }', response: '{ docId }' },
+      { method: 'GET',  endpoint: '/documents/{docId}', description: 'Load document snapshot + version', response: '{ snapshot, version, collaborators[] }' },
+      { method: 'WS',   endpoint: '/ws/documents/{docId}', description: 'Real-time op exchange channel', request: '{ op, clientVersion }', response: 'transformed ops pushed to all' },
+      { method: 'GET',  endpoint: '/documents/{docId}/history', description: 'Version history for restore', response: '{ versions[] }' },
+    ],
+    dataModel: [
+      { name: 'Document', fields: ['docId: uuid PK', 'ownerId: string', 'title: string', 'currentVersion: int', 'updatedAt: timestamp'] },
+      { name: 'Operation', fields: ['opId: uuid PK', 'docId: uuid FK', 'userId: string', 'sequenceNumber: int', 'payload: json (insert|delete|format)', 'timestamp: timestamp'] },
+      { name: 'Permission', fields: ['docId: uuid FK', 'userId: string PK', 'role: enum (viewer|commenter|editor|owner)'] },
+    ],
   },
 
   // 25
@@ -1772,6 +2080,16 @@ export const QUESTIONS: SystemDesignQuestion[] = [
       'Memcached (no persistence) is simpler. Redis (optional persistence) is more flexible.',
     ],
     punchline: 'Consistent hashing + replication + smart clients + gossip. Everything else is eviction policy.',
+    coreApis: [
+      { method: 'GET',    endpoint: '/cache/{key}', description: 'Read a value by key', response: '{ value, ttlRemaining } or 404' },
+      { method: 'PUT',    endpoint: '/cache/{key}', description: 'Write a value with optional TTL', request: '{ value, ttlSeconds? }', response: '{ ok }' },
+      { method: 'DELETE', endpoint: '/cache/{key}', description: 'Evict a key immediately', response: '{ ok }' },
+      { method: 'GET',    endpoint: '/cache/stats', description: 'Cluster-wide hit/miss/eviction metrics', response: '{ hits, misses, evictions, memoryUsedBytes }' },
+    ],
+    dataModel: [
+      { name: 'CacheEntry (per node)', fields: ['key: string PK', 'value: bytes', 'expiresAt: timestamp?', 'createdAt: timestamp', 'lastAccessedAt: timestamp (for LRU)'] },
+      { name: 'NodeMetadata', fields: ['nodeId: string PK', 'address: string', 'status: enum (active|draining|dead)', 'memoryCapacityBytes: long', 'virtualNodeTokens: int[]'] },
+    ],
   },
 ];
 

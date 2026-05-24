@@ -3,7 +3,7 @@ import {
   BookOpen, ArrowLeft, CheckCircle2, Circle, Search,
   Sparkles, ListChecks, GitBranch, Database, Layers,
   Zap, ExternalLink, MessageSquareQuote, Target, AlertTriangle,
-  ChevronDown,
+  ChevronDown, Menu, X,
 } from 'lucide-react';
 import {
   TOPICS, CATEGORY_META, topicById,
@@ -11,7 +11,7 @@ import {
 } from '../data/interviewPrepData';
 import {
   QUESTIONS, Q_DIFFICULTY_STYLE, questionById,
-  type SystemDesignQuestion,
+  type SystemDesignQuestion, type ApiDef,
 } from '../data/systemDesignQuestions';
 import { AnimatedArchDiagram } from '../components/AnimatedArchDiagram';
 import { DeepContentRenderer, DeepContentTOC } from '../components/DeepContentRenderer';
@@ -48,18 +48,21 @@ interface Props {
 
 export function InterviewPrepPage({ onPractice }: Props) {
   const [progress, setProgress] = useState<Record<string, boolean>>(() => loadProgress());
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(
+    () => TOPICS.find(t => t.category === 'core')?.id ?? TOPICS[0]?.id ?? null
+  );
   const [activeQId, setActiveQId] = useState<string | null>(null);
   const [query, setQuery]       = useState('');
   const [filter, setFilter]     = useState<TopicCategory | 'question' | 'all'>('all');
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => { saveProgress(progress); }, [progress]);
 
   const toggleDone = (id: string) =>
     setProgress(p => ({ ...p, [id]: !p[id] }));
 
-  const handleSelectTopic = (id: string) => { setActiveId(id); setActiveQId(null); };
-  const handleSelectQuestion = (id: string) => { setActiveQId(id); setActiveId(null); };
+  const handleSelectTopic = (id: string) => { setActiveId(id); setActiveQId(null); setMobileNavOpen(false); };
+  const handleSelectQuestion = (id: string) => { setActiveQId(id); setActiveId(null); setMobileNavOpen(false); };
 
   const showQuestions = filter === 'all' || filter === 'question';
   const showTopics    = filter !== 'question';
@@ -115,6 +118,8 @@ export function InterviewPrepPage({ onPractice }: Props) {
         progress={progress}
         onSelectTopic={handleSelectTopic}
         onSelectQuestion={handleSelectQuestion}
+        mobileOpen={mobileNavOpen}
+        onCloseMobile={() => setMobileNavOpen(false)}
       />
 
       {/* ── Right content area ────────────────────────────────────── */}
@@ -128,6 +133,7 @@ export function InterviewPrepPage({ onPractice }: Props) {
             onToggleDone={() => toggleDone(active.id)}
             onNavigate={handleSelectTopic}
             onPractice={onPractice}
+            onOpenNav={() => setMobileNavOpen(true)}
           />
         ) : activeQ ? (
           <QuestionDetailPage
@@ -136,6 +142,7 @@ export function InterviewPrepPage({ onPractice }: Props) {
             done={!!progress[activeQ.id]}
             onBack={() => setActiveQId(null)}
             onToggleDone={() => toggleDone(activeQ.id)}
+            onOpenNav={() => setMobileNavOpen(true)}
           />
         ) : (
           <div className="h-full overflow-y-auto bg-[#F3F2EF]">
@@ -143,9 +150,19 @@ export function InterviewPrepPage({ onPractice }: Props) {
 
               {/* ── Compact header ────────────────────────────────────────── */}
               <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h1 className="text-lg font-bold text-gray-900">System Design</h1>
-                  <p className="text-xs text-gray-500 mt-0.5">{stats.done}/{stats.total} topics complete</p>
+                <div className="flex items-center gap-2">
+                  {/* Mobile nav toggle */}
+                  <button
+                    onClick={() => setMobileNavOpen(true)}
+                    className="lg:hidden flex items-center justify-center w-8 h-8 rounded-lg bg-white border border-gray-200 shadow-sm text-gray-600 hover:bg-gray-50 shrink-0"
+                    aria-label="Open navigation"
+                  >
+                    <Menu size={16} />
+                  </button>
+                  <div>
+                    <h1 className="text-lg font-bold text-gray-900">System Design</h1>
+                    <p className="text-xs text-gray-500 mt-0.5">{stats.done}/{stats.total} topics complete</p>
+                  </div>
                 </div>
                 <div className="flex-1 max-w-xs">
                   <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden">
@@ -274,12 +291,14 @@ export function InterviewPrepPage({ onPractice }: Props) {
 
 // ── Learn sidebar ───────────────────────────────────────────────────
 
-function LearnSidebar({ activeId, activeQId, progress, onSelectTopic, onSelectQuestion }: {
+function LearnSidebar({ activeId, activeQId, progress, onSelectTopic, onSelectQuestion, mobileOpen, onCloseMobile }: {
   activeId: string | null;
   activeQId: string | null;
   progress: Record<string, boolean>;
   onSelectTopic: (id: string) => void;
   onSelectQuestion: (id: string) => void;
+  mobileOpen: boolean;
+  onCloseMobile: () => void;
 }) {
   const [open, setOpen] = useState<Record<string, boolean>>({
     core: true, pattern: true, deepdive: true, questions: true,
@@ -293,17 +312,8 @@ function LearnSidebar({ activeId, activeQId, progress, onSelectTopic, onSelectQu
     deepdive: 'Key Technologies',
   };
 
-  return (
-    <aside className="hidden lg:flex flex-col w-60 shrink-0 overflow-y-auto"
-      style={{ background: 'white', borderRight: '1px solid #E5E7EB' }}>
-
-      {/* Header */}
-      <div className="px-4 pt-5 pb-3 border-b border-gray-100">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-          Learn System Design
-        </p>
-      </div>
-
+  const navContent = (
+    <>
       {/* Topic sections */}
       {(['core', 'pattern', 'deepdive'] as TopicCategory[]).map(cat => {
         const items = TOPICS.filter(t => t.category === cat);
@@ -385,7 +395,54 @@ function LearnSidebar({ activeId, activeQId, progress, onSelectTopic, onSelectQu
           </div>
         )}
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* ── Desktop sidebar ──────────────────────────────────── */}
+      <aside className="hidden lg:flex flex-col w-60 shrink-0 overflow-y-auto"
+        style={{ background: 'white', borderRight: '1px solid #E5E7EB' }}>
+        <div className="px-4 pt-5 pb-3 border-b border-gray-100">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+            Learn System Design
+          </p>
+        </div>
+        {navContent}
+      </aside>
+
+      {/* ── Mobile drawer ────────────────────────────────────── */}
+      {mobileOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="lg:hidden fixed inset-0 bg-black/40 z-40"
+            onClick={onCloseMobile}
+            aria-hidden="true"
+          />
+          {/* Drawer panel */}
+          <aside
+            className="lg:hidden fixed top-0 left-0 bottom-0 z-50 flex flex-col overflow-y-auto w-72"
+            style={{ background: 'white', boxShadow: '4px 0 24px rgba(0,0,0,0.12)' }}
+          >
+            {/* Drawer header */}
+            <div className="flex items-center justify-between px-4 pt-5 pb-3 border-b border-gray-100 shrink-0">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                Learn System Design
+              </p>
+              <button
+                onClick={onCloseMobile}
+                className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                aria-label="Close navigation"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            {navContent}
+          </aside>
+        </>
+      )}
+    </>
   );
 }
 
@@ -452,13 +509,14 @@ function TopicCard({ topic, done, onOpen, onToggleDone }: {
 
 // ── Detail modal ────────────────────────────────────────────────────
 
-function TopicDetailPage({ topic, done, onBack, onToggleDone, onNavigate, onPractice }: {
+function TopicDetailPage({ topic, done, onBack, onToggleDone, onNavigate, onPractice, onOpenNav }: {
   topic: InterviewTopic;
   done: boolean;
   onBack: () => void;
   onToggleDone: () => void;
   onNavigate: (id: string) => void;
   onPractice?: (topic: InterviewTopic) => void;
+  onOpenNav?: () => void;
 }) {
   const [activeSectionId, setActiveSectionId] = useState<string | undefined>();
 
@@ -494,6 +552,24 @@ function TopicDetailPage({ topic, done, onBack, onToggleDone, onNavigate, onPrac
 
   return (
     <div className="h-full overflow-y-auto bg-[#F3F2EF] flex flex-col">
+
+      {/* Mobile sticky top bar */}
+      <div className="lg:hidden sticky top-0 z-10 flex items-center gap-2 px-3 py-2.5 bg-white border-b border-gray-200 shadow-sm shrink-0">
+        <button
+          onClick={onOpenNav}
+          className="flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
+          aria-label="Open navigation"
+        >
+          <Menu size={16} />
+        </button>
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          <ArrowLeft size={13} /> Topics
+        </button>
+        <span className="text-xs text-gray-400 truncate flex-1">{topic.title}</span>
+      </div>
 
       {/* Main body */}
       {topic.deep && topic.deep.length > 0 ? (
@@ -753,11 +829,12 @@ function QuestionCard({ question, done, onOpen, onToggleDone }: {
 
 // ── Question detail modal ──────────────────────────────────────────
 
-function QuestionDetailPage({ question, done, onBack, onToggleDone }: {
+function QuestionDetailPage({ question, done, onBack, onToggleDone, onOpenNav }: {
   question: SystemDesignQuestion;
   done: boolean;
   onBack: () => void;
   onToggleDone: () => void;
+  onOpenNav?: () => void;
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onBack(); };
@@ -770,6 +847,24 @@ function QuestionDetailPage({ question, done, onBack, onToggleDone }: {
 
   return (
     <div className="h-full overflow-y-auto bg-[#F3F2EF] flex flex-col">
+
+      {/* Mobile sticky top bar */}
+      <div className="lg:hidden sticky top-0 z-10 flex items-center gap-2 px-3 py-2.5 bg-white border-b border-gray-200 shadow-sm shrink-0">
+        <button
+          onClick={onOpenNav}
+          className="flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
+          aria-label="Open navigation"
+        >
+          <Menu size={16} />
+        </button>
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          <ArrowLeft size={13} /> Topics
+        </button>
+        <span className="text-xs text-gray-400 truncate flex-1">{question.title}</span>
+      </div>
 
       {/* Main body */}
       <div className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 space-y-7 pb-24">
@@ -846,6 +941,69 @@ function QuestionDetailPage({ question, done, onBack, onToggleDone }: {
                 <div key={i} className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
                   <p className="text-[10px] text-gray-500 leading-tight">{c.label}</p>
                   <p className="text-sm font-bold text-gray-900 font-mono mt-0.5">{c.value}</p>
+                </div>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {/* Core APIs */}
+        {question.coreApis && question.coreApis.length > 0 && (
+          <Section icon={<Layers size={14} />} title="Core APIs" accent={accent}>
+            <div className="space-y-2">
+              {question.coreApis.map((api: ApiDef, i: number) => {
+                const methodColors: Record<string, string> = {
+                  GET: 'bg-blue-100 text-blue-700',
+                  POST: 'bg-green-100 text-green-700',
+                  PUT: 'bg-yellow-100 text-yellow-700',
+                  PATCH: 'bg-orange-100 text-orange-700',
+                  DELETE: 'bg-red-100 text-red-700',
+                  WS: 'bg-purple-100 text-purple-700',
+                };
+                return (
+                  <div key={i} className="rounded-xl bg-white border border-gray-200 shadow-sm px-4 py-3">
+                    <div className="flex items-start gap-2 flex-wrap">
+                      <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded font-mono ${methodColors[api.method] ?? 'bg-gray-100 text-gray-700'}`}>
+                        {api.method}
+                      </span>
+                      <code className="text-xs font-mono text-gray-800 font-semibold break-all">{api.endpoint}</code>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1.5">{api.description}</p>
+                    {(api.request || api.response) && (
+                      <div className="mt-2 flex flex-col gap-1">
+                        {api.request && (
+                          <p className="text-[11px] text-gray-500"><span className="font-semibold text-gray-600">Request:</span> <code className="font-mono">{api.request}</code></p>
+                        )}
+                        {api.response && (
+                          <p className="text-[11px] text-gray-500"><span className="font-semibold text-gray-600">Response:</span> <code className="font-mono">{api.response}</code></p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+        )}
+
+        {/* Data Model */}
+        {question.dataModel && question.dataModel.length > 0 && (
+          <Section icon={<Database size={14} />} title="Data Model" accent={accent}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {question.dataModel.map((entity, i) => (
+                <div key={i} className="rounded-xl bg-white border border-gray-200 shadow-sm px-4 py-3">
+                  <p className="text-xs font-bold text-gray-800 font-mono mb-2">{entity.name}</p>
+                  <ul className="space-y-1">
+                    {entity.fields.map((field, j) => {
+                      const [fieldName, ...rest] = field.split(':');
+                      return (
+                        <li key={j} className="text-[11px] leading-relaxed flex items-baseline gap-1.5">
+                          <code className="font-mono font-semibold text-indigo-700 shrink-0">{fieldName}</code>
+                          {rest.length > 0 && <span className="text-gray-400">: {rest.join(':').trim()}</span>}
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
               ))}
             </div>
